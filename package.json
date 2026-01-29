@@ -57,7 +57,7 @@
     "@swc/core": "^1.13.5",
     "@types/babel__generator": "^7.27.0",
     "@types/babel__template": "^7.4.4",
-    "@types/express": "^5.0.3",
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/mongoose": "^5.11.97",
     "@types/multer": "^2.0.0",
