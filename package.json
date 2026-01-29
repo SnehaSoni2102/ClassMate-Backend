@@ -32,7 +32,7 @@
     "@nestjs/schedule": "^6.0.0",
     "@nestjs/swagger": "^11.2.0",
     "axios": "^1.12.1",
-    "bcryptjs": "^3.0.2",
+    "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "csv-parser": "^3.2.0",
