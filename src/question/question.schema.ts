@@ -75,7 +75,7 @@ export const questionSchema = SchemaFactory.createForClass(questionModule);
 // Create a counter schema for auto-incrementing serial_no
 @Schema()
 export class Counter {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   _id: string;
 
   @Prop({ required: true, default: 0 })
