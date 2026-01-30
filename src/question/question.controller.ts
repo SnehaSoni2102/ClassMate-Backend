@@ -46,13 +46,19 @@ export class QuestionController {
   constructor(private questionService: QuestionService) {}
 
   @Delete('bulk-delete')
-  @ApiOperation({ summary: 'bulk delete questions by IDs (body or query params)' })
+  @ApiOperation({
+    summary: 'bulk delete questions by IDs (body or query params)',
+  })
   @ApiResponse({ status: 200, description: 'questions deleted successfully' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ whitelist: true }))
   @Roles(UserRole.SUPERADMIN)
-  @ApiQuery({ name: 'ids', required: false, description: 'Comma-separated question IDs (alternative to body)' })
+  @ApiQuery({
+    name: 'ids',
+    required: false,
+    description: 'Comma-separated question IDs (alternative to body)',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -65,7 +71,10 @@ export class QuestionController {
       },
     },
   })
-  bulkDeleteQuestions(@Body() body: { questionIds?: string[] }, @Query('ids') queryIds?: string) {
+  bulkDeleteQuestions(
+    @Body() body: { questionIds?: string[] },
+    @Query('ids') queryIds?: string,
+  ) {
     let questionIds: string[] = [];
 
     // Try to get IDs from body first
@@ -74,11 +83,16 @@ export class QuestionController {
     }
     // Fallback to query parameter (comma-separated)
     else if (queryIds) {
-      questionIds = queryIds.split(',').map(id => id.trim()).filter(id => id);
+      questionIds = queryIds
+        .split(',')
+        .map((id) => id.trim())
+        .filter((id) => id);
     }
 
     if (!questionIds || questionIds.length === 0) {
-      throw new BadRequestException('questionIds array is required and cannot be empty. Provide questionIds in request body or use ?ids= query parameter');
+      throw new BadRequestException(
+        'questionIds array is required and cannot be empty. Provide questionIds in request body or use ?ids= query parameter',
+      );
     }
 
     return this.questionService.bulkDeleteQuestions(questionIds);

@@ -487,11 +487,17 @@ export class QuestionService {
 
               const updateData: any = {};
 
-              if (row.text !== undefined) updateData.text = row.text?.trim() || '';
-              if (row.text_hi !== undefined) updateData.text_hi = row.text_hi?.trim() || '';
+              if (row.text !== undefined)
+                updateData.text = row.text?.trim() || '';
+              if (row.text_hi !== undefined)
+                updateData.text_hi = row.text_hi?.trim() || '';
 
-              if (row.option_1 !== undefined || row.option_2 !== undefined ||
-                  row.option_3 !== undefined || row.option_4 !== undefined) {
+              if (
+                row.option_1 !== undefined ||
+                row.option_2 !== undefined ||
+                row.option_3 !== undefined ||
+                row.option_4 !== undefined
+              ) {
                 updateData.options = [
                   row.option_1?.trim(),
                   row.option_2?.trim(),
@@ -500,8 +506,12 @@ export class QuestionService {
                 ].filter(Boolean);
               }
 
-              if (row.option_1_hi !== undefined || row.option_2_hi !== undefined ||
-                  row.option_3_hi !== undefined || row.option_4_hi !== undefined) {
+              if (
+                row.option_1_hi !== undefined ||
+                row.option_2_hi !== undefined ||
+                row.option_3_hi !== undefined ||
+                row.option_4_hi !== undefined
+              ) {
                 updateData.options_hi = [
                   row.option_1_hi?.trim(),
                   row.option_2_hi?.trim(),
@@ -511,26 +521,38 @@ export class QuestionService {
               }
 
               if (row.correctAnswers !== undefined) {
-                updateData.correctAnswers = row.correctAnswers?.split('|').map((ans) => ans.trim()) || [];
+                updateData.correctAnswers =
+                  row.correctAnswers?.split('|').map((ans) => ans.trim()) || [];
               }
 
               if (row.correctAnswers_hi !== undefined) {
-                updateData.correctAnswers_hi = row.correctAnswers_hi?.split('|').map((ans) => ans.trim()) || [];
+                updateData.correctAnswers_hi =
+                  row.correctAnswers_hi?.split('|').map((ans) => ans.trim()) ||
+                  [];
               }
 
-              if (row.marks !== undefined) updateData.marks = parseFloat(row.marks) || 0;
-              if (row.negativeMarks !== undefined) updateData.negativeMarks = parseFloat(row.negativeMarks) || 0;
-              if (row.isTwoOptions !== undefined) updateData.isTwoOptions = row.isTwoOptions?.toLowerCase() === 'true';
+              if (row.marks !== undefined)
+                updateData.marks = parseFloat(row.marks) || 0;
+              if (row.negativeMarks !== undefined)
+                updateData.negativeMarks = parseFloat(row.negativeMarks) || 0;
+              if (row.isTwoOptions !== undefined)
+                updateData.isTwoOptions =
+                  row.isTwoOptions?.toLowerCase() === 'true';
 
               if (row.topics !== undefined) updateData.topics = topicIds;
               if (row.subject !== undefined) updateData.subject = subjectIds;
               if (row.class !== undefined) updateData.class = classIds;
               if (row.Exams !== undefined) updateData.Exams = examIds;
 
-              if (row.solution !== undefined) updateData.solution = row.solution?.trim() || '';
-              if (row.solution_hi !== undefined) updateData.solution_hi = row.solution_hi?.trim() || '';
+              if (row.solution !== undefined)
+                updateData.solution = row.solution?.trim() || '';
+              if (row.solution_hi !== undefined)
+                updateData.solution_hi = row.solution_hi?.trim() || '';
 
-              await this.questionModule.findByIdAndUpdate(existingQuestion._id, updateData);
+              await this.questionModule.findByIdAndUpdate(
+                existingQuestion._id,
+                updateData,
+              );
               updatedCount.value++;
             }
 
@@ -565,7 +587,7 @@ export class QuestionService {
 
       if (!name && !name_hi) continue;
 
-      let existing = await model.findOne({ name });
+      const existing = await model.findOne({ name });
 
       if (existing) {
         ids.push(existing._id);
@@ -578,31 +600,46 @@ export class QuestionService {
     return ids;
   }
 
-
   async bulkDeleteQuestions(questionIds: string[]) {
-    if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
-      throw new BadRequestException('questionIds array is required and cannot be empty');
+    if (
+      !questionIds ||
+      !Array.isArray(questionIds) ||
+      questionIds.length === 0
+    ) {
+      throw new BadRequestException(
+        'questionIds array is required and cannot be empty',
+      );
     }
 
     // Validate that all IDs are valid MongoDB ObjectIds
-    const validObjectIds = questionIds.filter(id => {
+    const validObjectIds = questionIds.filter((id) => {
       try {
-        return id && typeof id === 'string' && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id);
+        return (
+          id &&
+          typeof id === 'string' &&
+          id.length === 24 &&
+          /^[0-9a-fA-F]{24}$/.test(id)
+        );
       } catch {
         return false;
       }
     });
 
     if (validObjectIds.length === 0) {
-      throw new BadRequestException('No valid question IDs provided. IDs must be valid MongoDB ObjectIds (24-character hexadecimal strings)');
+      throw new BadRequestException(
+        'No valid question IDs provided. IDs must be valid MongoDB ObjectIds (24-character hexadecimal strings)',
+      );
     }
 
     // Find existing questions to avoid errors for non-existent IDs
-    const existingQuestions = await this.questionModule.find({
-      _id: { $in: validObjectIds }
-    }).select('_id').lean();
+    const existingQuestions = await this.questionModule
+      .find({
+        _id: { $in: validObjectIds },
+      })
+      .select('_id')
+      .lean();
 
-    const validIds = existingQuestions.map(q => q._id.toString());
+    const validIds = existingQuestions.map((q) => q._id.toString());
 
     if (validIds.length === 0) {
       return {
@@ -623,17 +660,17 @@ export class QuestionService {
       // Remove questions from sections
       this.sectionModule.updateMany(
         { questions: { $in: validIds } },
-        { $pull: { questions: { $in: validIds } } }
+        { $pull: { questions: { $in: validIds } } },
       ),
 
       // Remove questions from user test attempts
       this.userTestAttemptModule.updateMany(
         { 'answers.questionId': { $in: validIds } },
-        { $pull: { answers: { questionId: { $in: validIds } } } }
+        { $pull: { answers: { questionId: { $in: validIds } } } },
       ),
 
       // Delete the questions themselves
-      this.questionModule.deleteMany({ _id: { $in: validIds } })
+      this.questionModule.deleteMany({ _id: { $in: validIds } }),
     ];
 
     // Execute all delete operations in parallel

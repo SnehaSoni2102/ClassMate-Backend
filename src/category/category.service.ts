@@ -57,7 +57,7 @@ export class CategoryService {
       throw new Error('Invalid parent category ID');
     }
 
-    let categoryData: any = {
+    const categoryData: any = {
       ...addCategoryDto,
       parent: addCategoryDto.parent || null,
     };

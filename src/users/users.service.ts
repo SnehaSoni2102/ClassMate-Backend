@@ -56,7 +56,7 @@ export class UsersService {
     private s3Service: S3UploadService,
     @InjectModel(freeTrialModule.name)
     private freeTrialModule: Model<freeTrialModule>,
-  ) { }
+  ) {}
 
   async signup(createUserDto: signupDto) {
     const { phoneNumber } = createUserDto;

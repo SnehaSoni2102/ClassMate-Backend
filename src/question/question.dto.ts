@@ -12,11 +12,19 @@ import {
 } from 'class-validator';
 
 export class addQuestionDto {
-  @ApiProperty({ type: 'number', example: 1, description: 'Auto-incrementing serial number' })
+  @ApiProperty({
+    type: 'number',
+    example: 1,
+    description: 'Auto-incrementing serial number',
+  })
   @IsOptional()
   serial_no?: number;
 
-  @ApiProperty({ type: 'string', required: false, example: 'https://s3-url.com/image.jpg' })
+  @ApiProperty({
+    type: 'string',
+    required: false,
+    example: 'https://s3-url.com/image.jpg',
+  })
   @IsOptional()
   image?: string;
 
@@ -152,11 +160,19 @@ export class addQuestionDto {
 export class updateQuestionDto extends PartialType(addQuestionDto) {}
 
 export class addQuestionAdminDto {
-  @ApiProperty({ type: 'number', example: 1, description: 'Auto-incrementing serial number' })
+  @ApiProperty({
+    type: 'number',
+    example: 1,
+    description: 'Auto-incrementing serial number',
+  })
   @IsOptional()
   serial_no?: number;
 
-  @ApiProperty({ type: 'string', required: false, example: 'https://s3-url.com/image.jpg' })
+  @ApiProperty({
+    type: 'string',
+    required: false,
+    example: 'https://s3-url.com/image.jpg',
+  })
   @IsOptional()
   image?: string;
 
@@ -319,7 +335,11 @@ export class addQuestionAdminDto {
 }
 
 export class updateQuestionByIdDto {
-  @ApiProperty({ type: 'string', required: false, example: 'https://s3-url.com/image.jpg' })
+  @ApiProperty({
+    type: 'string',
+    required: false,
+    example: 'https://s3-url.com/image.jpg',
+  })
   @IsOptional()
   image?: string;
 
@@ -490,7 +510,11 @@ export class addQuestionGroupAdminDto {
   @IsNotEmpty()
   groupId: string;
 
-  @ApiProperty({ type: 'string', required: false, example: 'https://s3-url.com/image.jpg' })
+  @ApiProperty({
+    type: 'string',
+    required: false,
+    example: 'https://s3-url.com/image.jpg',
+  })
   @IsOptional()
   image?: string;
 

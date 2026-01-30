@@ -12,6 +12,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { JwtPayload, RequestWithAuthHeaders } from 'src/types/auth.types';
 import { TestService } from './test.service';
 import {
   createTestDto,
@@ -75,16 +76,22 @@ export class TestController {
   // @UseGuards(JwtAuthGuard)
   // @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.STUDENT)
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async fetchAllTests(@Request() req) {
+  async fetchAllTests(@Request() req: RequestWithAuthHeaders) {
     let userId: string | undefined;
 
     const authHeader = req.headers['authorization'];
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const headerStr =
+      typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? authHeader[0]
+          : undefined;
+    if (headerStr?.startsWith('Bearer ')) {
+      const token = headerStr.split(' ')[1];
       try {
-        const payload: any = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token);
         userId = payload?.data?._id;
-      } catch (err) {
+      } catch {
         userId = undefined;
       }
     }
@@ -154,9 +161,9 @@ export class TestController {
   async updateTest(
     @Param('id') id: string,
     @Body() updateTestDto: updateTestDto,
-    @Request() req,
+    @Request() req: RequestWithAuthHeaders,
   ) {
-    const user = req.user._id;
+    const user = req.user!._id;
 
     return this.testService.updateTest(user, id, updateTestDto);
   }
@@ -212,19 +219,25 @@ export class TestController {
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async getTestsByCategory(
-    @Request() req,
+    @Request() req: RequestWithAuthHeaders,
     @Query('categoryId') categoryId?: string,
     @Query('filter') filter?: string,
   ) {
     let userId: string | undefined;
 
     const authHeader = req.headers['authorization'];
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const headerStr =
+      typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? authHeader[0]
+          : undefined;
+    if (headerStr?.startsWith('Bearer ')) {
+      const token = headerStr.split(' ')[1];
       try {
-        const payload: any = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token);
         userId = payload?.data?._id;
-      } catch (err) {
+      } catch {
         userId = undefined;
       }
     }
@@ -241,16 +254,22 @@ export class TestController {
   })
   @ApiBearerAuth()
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async getLiveTests(@Request() req) {
+  async getLiveTests(@Request() req: RequestWithAuthHeaders) {
     let userId: string | undefined;
 
     const authHeader = req.headers['authorization'];
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const headerStr =
+      typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? authHeader[0]
+          : undefined;
+    if (headerStr?.startsWith('Bearer ')) {
+      const token = headerStr.split(' ')[1];
       try {
-        const payload: any = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token);
         userId = payload?.data?._id;
-      } catch (err) {
+      } catch {
         userId = undefined;
       }
     }
@@ -269,16 +288,22 @@ export class TestController {
   // @UseGuards(JwtAuthGuard)
   // @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  fetchAllIndia(@Request() req) {
+  fetchAllIndia(@Request() req: RequestWithAuthHeaders) {
     let userId: string | undefined;
 
     const authHeader = req.headers['authorization'];
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const headerStr =
+      typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? authHeader[0]
+          : undefined;
+    if (headerStr?.startsWith('Bearer ')) {
+      const token = headerStr.split(' ')[1];
       try {
-        const payload: any = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token);
         userId = payload?.data?._id;
-      } catch (err) {
+      } catch {
         userId = undefined;
       }
     }

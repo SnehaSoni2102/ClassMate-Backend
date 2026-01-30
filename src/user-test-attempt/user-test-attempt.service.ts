@@ -23,7 +23,10 @@ import { examModule } from 'src/exam/exam.schema';
 import { categoryModule } from 'src/category/category.schema';
 import { notificationModule } from 'src/notification/notification.schema';
 import { userSubscriptionModule } from 'src/user-subscription/user-subscription.schema';
-import { generateCertificate, CertificateData } from 'utils/generateCertificate';
+import {
+  generateCertificate,
+  CertificateData,
+} from 'utils/generateCertificate';
 import path from 'path';
 
 @Injectable()
@@ -752,7 +755,7 @@ export class UserTestAttemptService {
     const fullRanking = uniqueAttempts
       .sort((a, b) => b.score - a.score)
       .map((attempt, index) => {
-        const user = attempt.user as any;
+        const user = attempt.user;
         return {
           rank: index + 1,
           name: user?.Name || 'User',
@@ -920,7 +923,10 @@ export class UserTestAttemptService {
     };
   }
 
-  async generateCertificatePdf(testId: string, userId: string): Promise<Buffer> {
+  async generateCertificatePdf(
+    testId: string,
+    userId: string,
+  ): Promise<Buffer> {
     const attempt = await this.userTestAttemptModule
       .findOne({ testId, user: userId })
       .lean();
@@ -953,12 +959,14 @@ export class UserTestAttemptService {
 
     const totalQuestions = Array.isArray(test.sections)
       ? (test.sections as any[]).reduce(
-          (acc, s) => acc + (Array.isArray(s.questions) ? s.questions.length : 0),
+          (acc, s) =>
+            acc + (Array.isArray(s.questions) ? s.questions.length : 0),
           0,
         )
       : 0;
     const marksPerQuestion =
-      (test as any).marksPerQuestion && typeof (test as any).marksPerQuestion === 'number'
+      (test as any).marksPerQuestion &&
+      typeof (test as any).marksPerQuestion === 'number'
         ? (test as any).marksPerQuestion
         : 1;
     const maxScore = totalQuestions * marksPerQuestion;
@@ -980,12 +988,12 @@ export class UserTestAttemptService {
       percentile >= 90
         ? 'Excellent'
         : percentile >= 75
-        ? 'Very Good'
-        : percentile >= 60
-        ? 'Good'
-        : percentile >= 40
-        ? 'Average'
-        : 'Needs Improvement';
+          ? 'Very Good'
+          : percentile >= 60
+            ? 'Good'
+            : percentile >= 40
+              ? 'Average'
+              : 'Needs Improvement';
 
     const data: CertificateData = {
       studentName: (user as any)?.Name || 'Student',

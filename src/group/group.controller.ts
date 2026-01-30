@@ -17,6 +17,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { JwtPayload, RequestWithAuthHeaders } from 'src/types/auth.types';
 import { GroupService } from './group.service';
 import {
   ApiBearerAuth,
@@ -91,16 +92,22 @@ export class GroupController {
   // @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ whitelist: true }))
   // @Roles(UserRole.ADMIN, UserRole.STUDENT, UserRole.SUPERADMIN)
-  fetchAllGroups(@Request() req) {
+  fetchAllGroups(@Request() req: RequestWithAuthHeaders) {
     let userId: string | undefined;
 
     const authHeader = req.headers['authorization'];
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const headerStr =
+      typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? authHeader[0]
+          : undefined;
+    if (headerStr?.startsWith('Bearer ')) {
+      const token = headerStr.split(' ')[1];
       try {
-        const payload: any = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token);
         userId = payload?.data?._id;
-      } catch (err) {
+      } catch {
         userId = undefined;
       }
     }
@@ -394,7 +401,10 @@ export class GroupController {
   @UsePipes(new ValidationPipe({ whitelist: true }))
   @Roles(UserRole.ADMIN, UserRole.STUDENT)
   getAvailableTests(@Param('groupId') groupId: string, @Request() req) {
-    return this.groupService.getAvailableTestsInGroup(groupId, req?.user?._id || null);
+    return this.groupService.getAvailableTestsInGroup(
+      groupId,
+      req?.user?._id || null,
+    );
   }
 
   @Get(':groupId/tests/attempted')
@@ -464,7 +474,12 @@ export class GroupController {
   @ApiOperation({ summary: 'Fetch all groups for superadmin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'search', required: false, type: String, example: 'Group Name' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'Group Name',
+  })
   @ApiResponse({ status: 200, description: 'All groups fetched successfully' })
   @ApiBearerAuth()
   @Roles(UserRole.SUPERADMIN)

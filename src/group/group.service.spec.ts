@@ -93,14 +93,18 @@ describe('GroupService', () => {
         },
       ];
 
-      (mockGroupModel.exec as any).mockResolvedValue(mockGroups);
-      (mockGroupModel.populate as any).mockResolvedValue(mockGroups);
+      (mockGroupModel.exec as jest.Mock).mockResolvedValue(
+        mockGroups as never,
+      );
+      (mockGroupModel.populate as jest.Mock).mockResolvedValue(
+        mockGroups as never,
+      );
 
       const result = await service.fetchAllGroupsWithType(userId);
 
       expect(mockGroupModel.aggregate).toHaveBeenCalled();
       const pipeline = mockGroupModel.aggregate.mock.calls[0][0];
-      
+
       // Verify pipeline stages
       expect(pipeline).toEqual(
         expect.arrayContaining([
@@ -109,7 +113,7 @@ describe('GroupService', () => {
           expect.objectContaining({ $addFields: expect.any(Object) }),
           expect.objectContaining({ $sort: { latestTestDate: -1 } }),
           expect.objectContaining({ $project: expect.any(Object) }),
-        ])
+        ]),
       );
 
       expect(result.success).toBe(true);

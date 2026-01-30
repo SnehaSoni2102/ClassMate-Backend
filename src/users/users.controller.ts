@@ -267,9 +267,22 @@ export class UsersController {
   @ApiOperation({ summary: 'Fetch all users by pagination by super admin' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiQuery({ name: 'searchTerm', required: false, type: String, example: 'John' })
-  fetchAllUsers(@Query('page') page = 1, @Query('limit') limit = 10, @Query('searchTerm') searchTerm?: string) {
-    return this.userService.fetchAllUsers(Number(page), Number(limit), searchTerm);
+  @ApiQuery({
+    name: 'searchTerm',
+    required: false,
+    type: String,
+    example: 'John',
+  })
+  fetchAllUsers(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('searchTerm') searchTerm?: string,
+  ) {
+    return this.userService.fetchAllUsers(
+      Number(page),
+      Number(limit),
+      searchTerm,
+    );
   }
 
   @Get('/dashboard-summary')

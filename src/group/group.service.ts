@@ -27,6 +27,15 @@ import { userTestAttemptModule } from 'src/user-test-attempt/user-test-attempt.s
 import { pricingPlansModule } from 'src/pricing/pricing.schema';
 import { userSubscriptionModule } from 'src/user-subscription/user-subscription.schema';
 
+interface PopulatedSectionForTest {
+  _id: Types.ObjectId;
+  name?: string;
+  name_hi?: string;
+  order?: number;
+  timeLimit?: number;
+  questions?: (Types.ObjectId | { _id?: Types.ObjectId; toString?: () => string })[];
+}
+
 interface MemberUser {
   _id: string;
   profilePicture?: string;
@@ -508,26 +517,30 @@ export class GroupService {
       const isRequested =
         userId &&
         group.joinRequests?.some(
-          (requestId: any) => requestId.toString() === userId,
+          (requestId: Types.ObjectId) => requestId.toString() === userId,
         );
 
       const status: 'pending' | 'none' = isRequested ? 'pending' : 'none';
+
+      type MemberWithUser = { user?: { _id: unknown; profilePicture?: string | null } };
+      const membersList = group.members as MemberWithUser[] | undefined;
+      const members =
+        membersList
+          ?.filter((m) => m.user)
+          .map((m) => ({
+            _id: m.user!._id,
+            profilePicture: m.user!.profilePicture ?? null,
+          })) ?? [];
 
       return {
         id: group._id,
         title: group.title,
         description: group.description,
         logo: group.logo,
-        totalMembers: group.members?.length || 0,
-        createdBy: group.createdBy || '',
+        totalMembers: group.members?.length ?? 0,
+        createdBy: group.createdBy ?? '',
         status: userId ? status : 'none',
-        members:
-          group.members
-            ?.filter((m: any) => m.user)
-            .map((m: any) => ({
-              _id: m.user._id,
-              profilePicture: m.user.profilePicture || null,
-            })) || [],
+        members,
       };
     });
 
@@ -1684,16 +1697,19 @@ export class GroupService {
     });
 
     const data = filteredTests.map((test) => {
-      const sectionsWithQuestionIds = (test.sections || []).map((section: any) => ({
-        sectionId: section._id,
-        questionIds: (section.questions || []).map((q: any) =>
-          typeof q === 'string' ? q : (q?._id ?? q)?.toString?.() ?? q,
-        ),
-        name: section.name,
-        name_hi: section.name_hi,
-        order: section.order,
-        timeLimit: section.timeLimit,
-      }));
+      const sectionsWithQuestionIds = (test.sections || []).map((section: PopulatedSectionForTest) => {
+        const questionIds = (section.questions || []).map((q) =>
+          typeof q === 'string' ? q : (q && typeof q === 'object' && '_id' in q ? q._id : q)?.toString?.() ?? String(q),
+        );
+        return {
+          sectionId: section._id,
+          questionIds,
+          name: section.name,
+          name_hi: section.name_hi,
+          order: section.order,
+          timeLimit: section.timeLimit,
+        };
+      });
       return {
         ...test,
         sections: sectionsWithQuestionIds,

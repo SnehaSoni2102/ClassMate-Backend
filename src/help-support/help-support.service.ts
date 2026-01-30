@@ -34,7 +34,10 @@ export class HelpSupportService {
   }
 
   async fetchAllQueries() {
-    const query = await this.helpSupportModule.find().populate('user').sort('ascending');
+    const query = await this.helpSupportModule
+      .find()
+      .populate('user')
+      .sort('ascending');
 
     return {
       message: 'queries fetched successfully',

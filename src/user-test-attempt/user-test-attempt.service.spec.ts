@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserTestAttemptService } from './user-test-attempt.service';
 import { getModelToken } from '@nestjs/mongoose';
@@ -9,7 +10,6 @@ import { libraryModule } from 'src/library/library.schema';
 import { sectionModule } from 'src/section/section.schema';
 import { notificationModule } from 'src/notification/notification.schema';
 import { userSubscriptionModule } from 'src/user-subscription/user-subscription.schema';
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 import mongoose from 'mongoose';
 
 describe('UserTestAttemptService', () => {
@@ -80,7 +80,9 @@ describe('UserTestAttemptService', () => {
     }).compile();
 
     service = module.get<UserTestAttemptService>(UserTestAttemptService);
-    userTestAttemptModel = module.get(getModelToken(userTestAttemptModule.name));
+    userTestAttemptModel = module.get(
+      getModelToken(userTestAttemptModule.name),
+    );
     testModel = module.get(getModelToken(testModule.name));
     sectionModel = module.get(getModelToken(sectionModule.name));
     questionModel = module.get(getModelToken(questionModule.name));
@@ -131,29 +133,33 @@ describe('UserTestAttemptService', () => {
 
       (userTestAttemptModel.findOne as jest.Mock).mockReturnValue({
         sort: jest.fn().mockReturnValue({
-          lean: (jest.fn() as any).mockResolvedValue(mockAttempt),
+          lean: (jest.fn() as jest.Mock).mockResolvedValue(mockAttempt),
         }),
       });
 
       (testModel.findById as jest.Mock).mockReturnValue({
         populate: jest.fn().mockReturnValue({
-          lean: (jest.fn() as any).mockResolvedValue(mockTest),
+          lean: (jest.fn() as jest.Mock).mockResolvedValue(mockTest),
         }),
       });
 
       (sectionModel.findById as jest.Mock).mockReturnValue({
-        lean: (jest.fn() as any).mockResolvedValue(mockSection),
+        lean: (jest.fn() as jest.Mock).mockResolvedValue(mockSection),
       });
 
       (questionModel.find as jest.Mock).mockReturnValue({
-        lean: (jest.fn() as any).mockResolvedValue(mockQuestions),
+        lean: (jest.fn() as jest.Mock).mockResolvedValue(mockQuestions),
       });
 
       (libraryModel.find as jest.Mock).mockReturnValue({
-        lean: (jest.fn() as any).mockResolvedValue([]),
+        lean: (jest.fn() as jest.Mock).mockResolvedValue([]),
       });
 
-      const result = await service.getQuestionsBySectionByTestId(userId, testId, 'all');
+      const result = await service.getQuestionsBySectionByTestId(
+        userId,
+        testId,
+        'all',
+      );
 
       expect(result.data.sections).toHaveLength(1);
       expect(result.data.sections[0].questions).toHaveLength(1);

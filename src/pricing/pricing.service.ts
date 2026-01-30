@@ -42,13 +42,11 @@ export class PricingService {
     }
 
     plans.forEach((newPlan) => {
-      const index = doc!.plans.findIndex(
-        (p) => p.duration === newPlan.duration,
-      );
+      const index = doc.plans.findIndex((p) => p.duration === newPlan.duration);
       if (index >= 0) {
-        doc!.plans[index].price = newPlan.price;
+        doc.plans[index].price = newPlan.price;
       } else {
-        doc!.plans.push(newPlan);
+        doc.plans.push(newPlan);
       }
     });
 

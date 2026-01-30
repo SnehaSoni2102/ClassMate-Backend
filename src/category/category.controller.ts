@@ -14,6 +14,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { JwtPayload, RequestWithAuthHeaders } from 'src/types/auth.types';
 import { CategoryService, CategoryTree } from './category.service';
 import { JwtAuthGuard } from 'guards/jwt.guards';
 import {
@@ -233,17 +234,23 @@ export class CategoryController {
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async getCategoryTree(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: RequestWithAuthHeaders,
   ): Promise<{ message: string; data: CategoryTree; success: boolean }> {
     let userId: string | undefined;
 
     const authHeader = req.headers['authorization'];
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    const headerStr =
+      typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? authHeader[0]
+          : undefined;
+    if (headerStr?.startsWith('Bearer ')) {
+      const token = headerStr.split(' ')[1];
       try {
-        const payload: any = this.jwtService.verify(token);
+        const payload = this.jwtService.verify(token);
         userId = payload?.data?._id;
-      } catch (err) {
+      } catch {
         userId = undefined;
       }
     }

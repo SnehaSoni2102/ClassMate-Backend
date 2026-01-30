@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserSubscriptionController } from './user-subscription.controller';
 
@@ -9,7 +10,9 @@ describe('UserSubscriptionController', () => {
       controllers: [UserSubscriptionController],
     }).compile();
 
-    controller = module.get<UserSubscriptionController>(UserSubscriptionController);
+    controller = module.get<UserSubscriptionController>(
+      UserSubscriptionController,
+    );
   });
 
   it('should be defined', () => {

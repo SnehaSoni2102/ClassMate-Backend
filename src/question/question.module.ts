@@ -5,7 +5,12 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
-import { questionModule, questionSchema, Counter, CounterSchema } from './question.schema';
+import {
+  questionModule,
+  questionSchema,
+  Counter,
+  CounterSchema,
+} from './question.schema';
 import { sectionModule, sectionSchema } from 'src/section/section.schema';
 import { JwtStrategy } from 'guards/jwtStrategy.guards';
 import { S3UploadService } from 'utils/s3Uploader';
@@ -66,9 +71,7 @@ import { groupModule, groupSchema } from 'src/group/group.schema';
     MongooseModule.forFeature([
       { name: groupModule.name, schema: groupSchema },
     ]),
-    MongooseModule.forFeature([
-      { name: Counter.name, schema: CounterSchema },
-    ]),
+    MongooseModule.forFeature([{ name: Counter.name, schema: CounterSchema }]),
   ],
   providers: [QuestionService, JwtStrategy, S3UploadService],
   controllers: [QuestionController],
