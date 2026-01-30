@@ -3,8 +3,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
-  UnauthorizedException,
+  NotFoundException
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { groupModule, GroupCreatedBy } from './group.schema';
@@ -1661,6 +1660,7 @@ export class GroupService {
 
     const tests = await this.testModule
       .find({ group: groupId })
+      .sort({ createdAt: -1 })
       .populate('user')
       .populate({
         path: 'sections',
