@@ -1661,7 +1661,12 @@ export class GroupService {
 
     const tests = await this.testModule
       .find({ group: groupId })
-      .populate('user');
+      .populate('user')
+      .populate({
+        path: 'sections',
+        select: 'name name_hi order timeLimit questions',
+      })
+      .lean();
 
     const now = new Date();
     const filteredTests = tests.filter((test) => {
@@ -1678,9 +1683,26 @@ export class GroupService {
       return false;
     });
 
+    const data = filteredTests.map((test) => {
+      const sectionsWithQuestionIds = (test.sections || []).map((section: any) => ({
+        sectionId: section._id,
+        questionIds: (section.questions || []).map((q: any) =>
+          typeof q === 'string' ? q : (q?._id ?? q)?.toString?.() ?? q,
+        ),
+        name: section.name,
+        name_hi: section.name_hi,
+        order: section.order,
+        timeLimit: section.timeLimit,
+      }));
+      return {
+        ...test,
+        sections: sectionsWithQuestionIds,
+      };
+    });
+
     return {
       message: 'Tests fetched successfully',
-      data: filteredTests,
+      data,
       success: true,
     };
   }
