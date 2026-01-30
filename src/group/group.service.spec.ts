@@ -93,9 +93,7 @@ describe('GroupService', () => {
         },
       ];
 
-      (mockGroupModel.exec as jest.Mock).mockResolvedValue(
-        mockGroups as never,
-      );
+      (mockGroupModel.exec as jest.Mock).mockResolvedValue(mockGroups as never);
       (mockGroupModel.populate as jest.Mock).mockResolvedValue(
         mockGroups as never,
       );
