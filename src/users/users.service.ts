@@ -10,6 +10,7 @@ import mongoose, { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import {
+  addUserDto,
   CheckPhoneNumbersDto,
   createFreeTrialDto,
   createSuperAdminDto,
@@ -265,6 +266,94 @@ export class UsersService {
     return {
       message: 'User Signup Successful',
       data: User,
+    };
+  }
+
+  /**
+   * Add a new user. Superadmin can add any role; Admin can add only admin or student; Student cannot add.
+   */
+  async addUser(callerUserId: string, dto: addUserDto) {
+    const caller = await this.authModule.findById(callerUserId).select('role');
+    if (!caller) {
+      throw new NotFoundException('Caller user not found.');
+    }
+
+    if (caller.role === UserRole.STUDENT) {
+      throw new ForbiddenException('Students are not allowed to add users.');
+    }
+
+    const allowedRolesForAdmin: string[] = [UserRole.ADMIN, UserRole.STUDENT];
+    if (caller.role === UserRole.ADMIN && !allowedRolesForAdmin.includes(dto.role)) {
+      throw new ForbiddenException(
+        'Admins can only add users with role admin or student.',
+      );
+    }
+
+    const existingByPhone = await this.authModule.findOne({
+      phoneNumber: dto.phoneNumber,
+    });
+    if (existingByPhone) {
+      throw new BadRequestException(
+        'A user with this phone number already exists.',
+      );
+    }
+
+    if (dto.role === UserRole.ADMIN || dto.role === UserRole.SUPERADMIN) {
+      if (!dto.email?.trim() || !dto.password?.trim()) {
+        throw new BadRequestException(
+          'Email and password are required for admin and superadmin roles.',
+        );
+      }
+      const existingByEmail = await this.authModule.findOne({
+        email: dto.email.trim(),
+      });
+      if (existingByEmail) {
+        throw new BadRequestException(
+          'A user with this email already exists.',
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(dto.password, 10);
+      const user = await this.authModule.create({
+        phoneNumber: dto.phoneNumber,
+        email: dto.email.trim(),
+        password: hashedPassword,
+        role: dto.role,
+        Name: dto.Name?.trim(),
+        isOnBoardingCompleted: true,
+      });
+
+      return {
+        message: 'User added successfully',
+        data: {
+          _id: user._id,
+          phoneNumber: user.phoneNumber,
+          email: user.email,
+          role: user.role,
+          Name: user.Name,
+        },
+        success: true,
+      };
+    }
+
+    // Student: no email/password; they will use OTP to login
+    const user = await this.authModule.create({
+      phoneNumber: dto.phoneNumber,
+      role: UserRole.STUDENT,
+      Name: dto.Name?.trim(),
+      password: '', // Students login via OTP
+      isOnBoardingCompleted: false,
+    });
+
+    return {
+      message: 'User added successfully. Student can login via OTP.',
+      data: {
+        _id: user._id,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        Name: user.Name,
+      },
+      success: true,
     };
   }
 

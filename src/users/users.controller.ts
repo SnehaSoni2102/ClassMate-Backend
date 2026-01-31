@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import {
+  addUserDto,
   CheckPhoneNumbersDto,
   createSuperAdminDto,
   loginAdminDto,
@@ -48,6 +49,7 @@ import {
   VerifyOtpResponseDto,
 } from 'responseDTOs/swaggerResponse.dto';
 import { JwtAuthGuard } from 'guards/jwt.guards';
+import { RolesGuard } from 'guards/userRoles.guards';
 import { Roles, UserRole } from 'utils/helper';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -147,6 +149,34 @@ export class UsersController {
   ) {
     const id = req.user._id;
     return this.userService.update(id, updateDto, file);
+  }
+
+  @Post('add')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Add new user (Superadmin: any role; Admin: admin or student only)',
+  })
+  @ApiBody({
+    description:
+      'User details. Email and password required for admin/superadmin roles.',
+    type: addUserDto,
+  })
+  @ApiResponse({ status: 201, description: 'User added successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error or user already exists',
+  })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Forbidden: insufficient role or not allowed to assign this role',
+  })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  addUser(@Request() req, @Body() body: addUserDto) {
+    return this.userService.addUser(req.user._id, body);
   }
 
   @Post('admins/signup')

@@ -17,6 +17,7 @@ import {
   ArrayMinSize,
   IsNumber,
   IsBoolean,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -302,4 +303,58 @@ export class updateFreeTrialDto {
     required: false,
   })
   isActive?: boolean;
+}
+
+export class addUserDto {
+  @IsNotEmpty()
+  @IsString()
+  @IsPhoneNumber('IN')
+  @IsValidIndianPhone({ message: 'Phone number appears invalid or fake' })
+  @ApiProperty({
+    example: '6362618604',
+    description: 'Phone number of the user',
+    required: true,
+  })
+  phoneNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty({
+    example: 'student',
+    description: 'Role to assign. Superadmin: any; Admin: admin or student only',
+    required: true,
+    enum: ['admin', 'superadmin', 'student'],
+  })
+  role: 'admin' | 'superadmin' | 'student';
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    example: 'John Doe',
+    description: 'Display name',
+    required: false,
+  })
+  Name?: string;
+
+  @ValidateIf((o) => o.role === 'admin' || o.role === 'superadmin')
+  @IsNotEmpty({ message: 'Email is required for admin and superadmin roles' })
+  @IsString()
+  @IsEmail()
+  @ApiProperty({
+    example: 'admin@example.com',
+    description: 'Required when role is admin or superadmin',
+    required: false,
+  })
+  email?: string;
+
+  @ValidateIf((o) => o.role === 'admin' || o.role === 'superadmin')
+  @IsNotEmpty({ message: 'Password is required for admin and superadmin roles' })
+  @IsString()
+  @MinLength(6, { message: 'Password must be at least 6 characters' })
+  @ApiProperty({
+    example: 'securePass123',
+    description: 'Required when role is admin or superadmin (min 6 characters)',
+    required: false,
+  })
+  password?: string;
 }
