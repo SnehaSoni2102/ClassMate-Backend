@@ -1673,7 +1673,7 @@ export class GroupService {
 
     const tests = await this.testModule
       .find({ group: groupId })
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .populate('user')
       .populate({
         path: 'sections',
