@@ -189,25 +189,56 @@ export class CategoryService {
   async getExamsByCategory(categoryName: string, lang: 'en' | 'hi' = 'en') {
     const regex = new RegExp(`^${categoryName}$`, 'i');
 
-    const category = await this.categoryModule
+    const root = (await this.categoryModule
       .findOne({
         $or: [{ name: regex }, { name_hi: regex }],
       })
-      .populate('exams')
-      .lean();
+      .lean()
+      .populate('exams')) as unknown as CategoryTree;
 
-    if (!category) {
+    if (!root) {
       throw new NotFoundException('Category not found');
     }
 
-    const exams = (category.exams || []).map((exam: any) => ({
-      id: exam._id,
-      name: lang === 'hi' ? exam.name_hi : exam.name,
-    }));
+    const buildTree = async (category: CategoryTree): Promise<CategoryTree[]> => {
+      const children = (await this.categoryModule
+        .find({ parent: category._id })
+        .lean()
+        .populate('exams')) as unknown as CategoryTree[];
+
+      for (const child of children) {
+        child.children = await buildTree(child);
+      }
+
+      return children;
+    };
+
+    root.children = await buildTree(root);
+
+    // attach tests for each exam in the tree
+    const traverseAndAttachTests = async (node: CategoryTree) => {
+      if (Array.isArray(node.exams) && node.exams.length > 0) {
+        for (const exam of node.exams as any[]) {
+          try {
+            const tests = await this.testModule.find({ exam: exam._id }).lean();
+            (exam as any).tests = tests;
+          } catch {
+            (exam as any).tests = [];
+          }
+        }
+      }
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        for (const child of node.children) {
+          await traverseAndAttachTests(child);
+        }
+      }
+    };
+
+    await traverseAndAttachTests(root);
 
     return {
-      message: 'Exams fetched successfully',
-      data: exams,
+      message: 'Exams fetched successfully (hierarchy)',
+      data: root,
       success: true,
     };
   }
