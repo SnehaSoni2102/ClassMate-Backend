@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { examModule } from './exam.schema';
+import { testModule } from 'src/test/test.schema';
 import { Model } from 'mongoose';
 import { S3UploadService } from 'utils/s3Uploader';
 import {
@@ -20,6 +21,7 @@ import { questionModule } from 'src/question/question.schema';
 export class ExamService {
   constructor(
     @InjectModel(examModule.name) private examModule: Model<examModule>,
+    @InjectModel(testModule.name) private testModule: Model<testModule>,
     @InjectModel(categoryModule.name)
     private categoryModule: Model<categoryModule>,
     private s3UploadService: S3UploadService,
@@ -168,6 +170,9 @@ export class ExamService {
 
   async fetchOneExam(id: string) {
     const exam = await this.examModule.findById(id);
+    const tests = await this.testModule.find({ exam: id });
+
+    console.log(tests);
 
     if (!exam) {
       throw new NotFoundException('Exam not found, please enter correct ID');
@@ -176,6 +181,7 @@ export class ExamService {
     return {
       message: 'Exam fetched successfully',
       data: exam,
+      tests: tests,
       success: true,
     };
   }

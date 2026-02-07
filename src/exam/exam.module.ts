@@ -3,6 +3,7 @@ import { ExamService } from './exam.service';
 import { ExamController } from './exam.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { examModule, examSchema } from './exam.schema';
+import { testModule, testSchema } from 'src/test/test.schema';
 import { ConfigModule } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from 'guards/jwtStrategy.guards';
@@ -21,6 +22,7 @@ import { questionModule, questionSchema } from 'src/question/question.schema';
     MongooseModule.forFeature([
       { name: questionModule.name, schema: questionSchema },
     ]),
+    MongooseModule.forFeature([{ name: testModule.name, schema: testSchema }]),
   ],
   providers: [ExamService, JwtStrategy, S3UploadService],
   controllers: [ExamController],
