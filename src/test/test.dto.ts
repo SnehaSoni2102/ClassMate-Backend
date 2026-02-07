@@ -33,13 +33,13 @@ export class CreateSectionDto {
   })
   name: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'योग्यता तर्क',
     description: 'Section name in Hindi',
   })
-  name_hi: string;
+  name_hi?: string;
 
   @IsOptional()
   @IsNumber()
@@ -117,14 +117,13 @@ export class createTestDto {
   })
   endTime: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'आईबीपीएस पीओ मॉक टेस्ट - 1',
-    description: 'परीक्षण का शीर्षक',
-    required: true,
+    description: 'परीक्षण का शीर्षक (Hindi title, optional)',
   })
-  title_hi: string;
+  title_hi?: string;
 
   @IsNotEmpty()
   @IsNumber()
@@ -190,15 +189,14 @@ export class createTestDto {
   })
   description: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
+  @ApiPropertyOptional({
     example:
       'यह आईबीपीएस पीओ की तैयारी के लिए एक मॉक टेस्ट है जिसमें अनुभागीय समय के साथ 3 खंड शामिल हैं।',
-    description: 'परीक्षण का विवरण',
-    required: true,
+    description: 'परीक्षण का विवरण (Hindi description, optional)',
   })
-  description_hi: string;
+  description_hi?: string;
 
   @IsArray()
   @ArrayNotEmpty()
@@ -228,14 +226,14 @@ export class createTestDto {
   })
   sections: CreateSectionDto[];
 
+  @IsOptional()
+  @ValidateIf((o) => o.exam != null && o.exam !== '')
   @IsMongoId()
-  @IsString()
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '683dbace936c9cd07e7f1816',
-    description: 'Enter _id of exam',
-    required: true,
+    description: 'Enter _id of exam (optional for group tests)',
   })
-  exam: string;
+  exam?: string;
 
   @IsNotEmpty()
   @IsString()
@@ -324,14 +322,13 @@ export class createTestDtoAllIndia {
   })
   endTime: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'आईबीपीएस पीओ मॉक टेस्ट - 1',
-    description: 'परीक्षण का शीर्षक',
-    required: true,
+    description: 'परीक्षण का शीर्षक (Hindi title, optional)',
   })
-  title_hi: string;
+  title_hi?: string;
 
   @IsNotEmpty()
   @IsNumber()
@@ -397,15 +394,14 @@ export class createTestDtoAllIndia {
   })
   description: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
+  @ApiPropertyOptional({
     example:
       'यह आईबीपीएस पीओ की तैयारी के लिए एक मॉक टेस्ट है जिसमें अनुभागीय समय के साथ 3 खंड शामिल हैं।',
-    description: 'परीक्षण का विवरण',
-    required: true,
+    description: 'परीक्षण का विवरण (Hindi description, optional)',
   })
-  description_hi: string;
+  description_hi?: string;
 
   @IsArray()
   @ArrayNotEmpty()

@@ -732,8 +732,9 @@ export class GroupService {
 
     const durationInSeconds = testDto.durationInMinutes * 60;
 
-    const test = await this.testModule.create({
-      ...testDto,
+    const { exam, ...testDtoRest } = testDto;
+    const testPayload: any = {
+      ...testDtoRest,
       sections: sections.map((s) => s.id),
       totalQuestions: sections.reduce(
         (acc, curr) => acc + curr.questions.length,
@@ -742,7 +743,12 @@ export class GroupService {
       user: userId,
       group: group._id,
       durationInMinutes: durationInSeconds,
-    });
+    };
+    if (exam && exam.trim() !== '') {
+      testPayload.exam = exam;
+    }
+
+    const test = await this.testModule.create(testPayload);
 
     const membersToNotify = group.members.filter(
       (m) => m.user && m.user.toString() !== userId,
