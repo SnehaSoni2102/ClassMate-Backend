@@ -12,19 +12,19 @@ export class questionModule {
   @Prop({ required: true })
   text: string;
 
-  @Prop({ required: true })
+  @Prop()
   text_hi: string;
 
   @Prop({ type: [String], required: true })
   options: [string];
 
-  @Prop({ type: [String], required: true })
+  @Prop({ type: [String] })
   options_hi: [string];
 
   @Prop({ type: [String], required: true })
   correctAnswers: string[];
 
-  @Prop({ type: [String], required: true })
+  @Prop({ type: [String] })
   correctAnswers_hi: string[];
 
   @Prop({ required: true })

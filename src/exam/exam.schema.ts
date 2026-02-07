@@ -8,7 +8,7 @@ export class examModule {
   @Prop()
   logo: string;
 
-  @Prop({ required: true })
+  @Prop()
   name_hi: string;
 }
 

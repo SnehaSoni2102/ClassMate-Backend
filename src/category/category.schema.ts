@@ -6,7 +6,7 @@ export class categoryModule {
   @Prop({ required: true, unique: true })
   name: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ unique: true })
   name_hi: string;
 
   @Prop()

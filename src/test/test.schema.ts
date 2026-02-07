@@ -13,7 +13,7 @@ export class testModule {
   @Prop({ required: true })
   title: string;
 
-  @Prop({ required: true })
+  @Prop()
   title_hi: string;
 
   @Prop({ required: true })

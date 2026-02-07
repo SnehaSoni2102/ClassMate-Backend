@@ -5,7 +5,7 @@ export class topicModule {
   @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
+  @Prop()
   name_hi: string;
 }
 
