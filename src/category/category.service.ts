@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { categoryModule } from './category.schema';
+import { testModule } from 'src/test/test.schema';
 import mongoose, { Model } from 'mongoose';
 import {
   addCategoryDto,
@@ -30,6 +31,7 @@ export class CategoryService {
     @InjectModel(categoryModule.name)
     private categoryModule: Model<categoryModule>,
     @InjectModel(examModule.name) private examModule: Model<examModule>,
+    @InjectModel(testModule.name) private testModule: Model<testModule>,
     @InjectModel(pricingPlansModule.name)
     private pricingModule: Model<pricingPlansModule>,
     private s3UploadService: S3UploadService,
@@ -299,6 +301,28 @@ export class CategoryService {
         root.hasSubscription = true;
       }
     }
+    // For each node in the tree (root + descendants), fetch tests for each exam
+    const traverseAndAttachTests = async (node: CategoryTree) => {
+      if (Array.isArray(node.exams) && node.exams.length > 0) {
+        for (const exam of node.exams as any[]) {
+          try {
+            const tests = await this.testModule.find({ exam: exam._id }).lean();
+            (exam as any).tests = tests;
+          } catch (err) {
+            (exam as any).tests = [];
+          }
+        }
+      }
+      if (Array.isArray(node.children) && node.children.length > 0) {
+        for (const child of node.children) {
+          await traverseAndAttachTests(child);
+        }
+      }
+    };
+
+    await traverseAndAttachTests(root);
+
+    // console.log(root);
 
     return {
       message: 'Categories fetched successfully',

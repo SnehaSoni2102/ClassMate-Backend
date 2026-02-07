@@ -9,6 +9,7 @@ import { categoryModule, categorySchema } from './category.schema';
 import { JwtStrategy } from 'guards/jwtStrategy.guards';
 import { S3UploadService } from 'utils/s3Uploader';
 import { examModule, examSchema } from 'src/exam/exam.schema';
+import { testModule, testSchema } from 'src/test/test.schema';
 import {
   pricingPlansModule,
   pricingPlansSchema,
@@ -39,6 +40,7 @@ import {
       { name: categoryModule.name, schema: categorySchema },
     ]),
     MongooseModule.forFeature([{ name: examModule.name, schema: examSchema }]),
+    MongooseModule.forFeature([{ name: testModule.name, schema: testSchema }]),
     MongooseModule.forFeature([
       { name: pricingPlansModule.name, schema: pricingPlansSchema },
     ]),
