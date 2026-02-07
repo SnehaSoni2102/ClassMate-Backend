@@ -259,7 +259,7 @@ export class UsersService {
     const User = await this.authModule.create({
       email: createUserDto.email,
       password,
-      role: UserRole.SUPERADMIN,
+      role: createUserDto.role === 'admin' ? UserRole.ADMIN : UserRole.SUPERADMIN,
       isOnBoardingCompleted: true,
     });
 
@@ -373,6 +373,10 @@ export class UsersService {
       throw new BadRequestException(
         'Password did not match, please enter correct password.',
       );
+    }
+    // Only SUPERADMIN allowed to login via this admin login API
+    if (user.role !== UserRole.SUPERADMIN) {
+      throw new ForbiddenException('Only superadmin allowed to login via this endpoint.');
     }
 
     return {
