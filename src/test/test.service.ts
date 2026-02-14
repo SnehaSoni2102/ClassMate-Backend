@@ -144,6 +144,17 @@ export class TestService {
       exam: createTestDto.exam,
       testType: createTestDto.testType,
     });
+    // set deletionAt = createdAt + 6 months
+    try {
+      const createdAt = (test as any).createdAt ? new Date((test as any).createdAt) : new Date();
+      const deletionAt = new Date(createdAt);
+      deletionAt.setMonth(deletionAt.getMonth() + 6);
+      test.deletionAt = deletionAt;
+      await test.save();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to set deletionAt for test', test._id, err);
+    }
 
     const allUsers = await this.authModule.find({});
     await Promise.all(
@@ -352,6 +363,12 @@ export class TestService {
     if (updateTestDto.durationInMinutes) {
       updateTestDto.durationInMinutes = updateTestDto.durationInMinutes * 60;
     }
+
+    // include deletionAt = updatedAt + 6 months in the update so it's saved in the same DB op
+    const nowForUpdate = new Date();
+    const deletionAtCalc = new Date(nowForUpdate);
+    deletionAtCalc.setMonth(deletionAtCalc.getMonth() + 6);
+    (updateTestDto as any).deletionAt = deletionAtCalc;
 
     const update = await this.testModule.findByIdAndUpdate(
       testId,

@@ -28,6 +28,7 @@ import { UserSubscriptionModule } from './user-subscription/user-subscription.mo
 import { PricingModule } from './pricing/pricing.module';
 import { ReportModule } from './report/report.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -60,6 +61,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     UserSubscriptionModule,
     PricingModule,
     ReportModule,
+    // Scheduler for periodic cleanup tasks (deleting tests after deletionAt)
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

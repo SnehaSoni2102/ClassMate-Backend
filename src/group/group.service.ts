@@ -742,6 +742,12 @@ export class GroupService {
       user: userId,
       group: group._id,
       durationInMinutes: durationInSeconds,
+      // schedule deletionAt = createdAt + 6 months
+      deletionAt: (() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() + 6);
+        return d;
+      })(),
     });
 
     const membersToNotify = group.members.filter(
@@ -963,6 +969,12 @@ export class GroupService {
     if (updateDto.durationInMinutes) {
       updatedPayload.durationInMinutes = updateDto.durationInMinutes * 60;
     }
+
+    // update deletionAt to updatedAt + 6 months (atomic with update)
+    const nowForUpdate = new Date();
+    const deletionAtCalc = new Date(nowForUpdate);
+    deletionAtCalc.setMonth(deletionAtCalc.getMonth() + 6);
+    updatedPayload.deletionAt = deletionAtCalc;
 
     const test = await this.testModule.findOneAndUpdate(
       { _id: testId, group: groupId },

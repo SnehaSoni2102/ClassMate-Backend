@@ -87,6 +87,9 @@ export class testModule {
 
   @Prop({ default: false })
   isAllIndia: boolean;
+
+  @Prop()
+  deletionAt?: Date;
 }
 
 export const testSchema = SchemaFactory.createForClass(testModule);
