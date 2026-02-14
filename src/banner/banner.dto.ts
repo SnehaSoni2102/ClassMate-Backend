@@ -42,11 +42,11 @@ export class createYoutubeLinkDto {
   title: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({
     example: 'सहपाठी परीक्षण',
-    description: 'Enter title of the youtube link',
-    required: true,
+    description: 'Enter title of the youtube link (Hindi, optional)',
+    required: false,
   })
-  title_hi: string;
+  title_hi?: string;
 }

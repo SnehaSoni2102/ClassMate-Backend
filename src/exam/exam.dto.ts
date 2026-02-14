@@ -23,9 +23,15 @@ export class addExamDto {
   @ApiProperty({
     example: 'एसएससी कांस्टेबल',
     description: 'अपनी परीक्षा दर्ज करें',
-    required: true,
   })
-  name_hi: string;
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    example: 'एसएससी कांस्टेबल',
+    description: 'अपनी परीक्षा दर्ज करें (Hindi, optional)',
+    required: false,
+  })
+  name_hi?: string;
 
   @ApiProperty({
     type: 'string',

@@ -16,9 +16,15 @@ export class addTopicDto {
   @ApiProperty({
     example: 'भौतिक विज्ञान',
     description: 'विषय का नाम',
-    required: true,
   })
-  name_hi: string;
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    example: 'भौतिक विज्ञान',
+    description: 'विषय का नाम (Hindi, optional)',
+    required: false,
+  })
+  name_hi?: string;
 
   @IsOptional()
   @IsMongoId()

@@ -118,13 +118,13 @@ export class createTestDto {
   endTime: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({
     example: 'आईबीपीएस पीओ मॉक टेस्ट - 1',
     description: 'परीक्षण का शीर्षक',
-    required: true,
+    required: false,
   })
-  title_hi: string;
+  title_hi?: string;
 
   @IsNotEmpty()
   @IsNumber()
@@ -191,14 +191,14 @@ export class createTestDto {
   description: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({
     example:
       'यह आईबीपीएस पीओ की तैयारी के लिए एक मॉक टेस्ट है जिसमें अनुभागीय समय के साथ 3 खंड शामिल हैं।',
     description: 'परीक्षण का विवरण',
-    required: true,
+    required: false,
   })
-  description_hi: string;
+  description_hi?: string;
 
   @IsArray()
   @ArrayNotEmpty()

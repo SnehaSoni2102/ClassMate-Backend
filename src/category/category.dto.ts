@@ -26,9 +26,15 @@ export class addCategoryDto {
   @ApiProperty({
     example: 'एसएससी',
     description: 'अपनी श्रेणी दर्ज करें',
-    required: true,
   })
-  name_hi: string;
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    example: 'एसएससी',
+    description: 'अपनी श्रेणी दर्ज करें (Hindi, optional)',
+    required: false,
+  })
+  name_hi?: string;
 
   @IsNotEmpty()
   @IsString()
@@ -44,8 +50,10 @@ export class addCategoryDto {
   @ApiProperty({
     example: 'एसएससी',
     description: 'अपनी श्रेणी दर्ज करें',
+    required: false,
   })
-  description_hi: string;
+  @IsOptional()
+  description_hi?: string;
 
   @ApiProperty({
     type: 'string',

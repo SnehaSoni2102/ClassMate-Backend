@@ -37,14 +37,14 @@ export class addQuestionDto {
   })
   text: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   @ApiProperty({
     example: 'भारत का राजधानी शहर कौन सा है',
     description: 'प्रश्न जोड़ना आवश्यक है',
-    required: true,
+    required: false,
   })
-  text_hi: string;
+  text_hi?: string;
 
   @IsArray()
   @ArrayNotEmpty()
@@ -59,8 +59,8 @@ export class addQuestionDto {
   })
   options: string[];
 
+  @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()
   @IsString({ each: true })
   @Transform(({ value }) =>
     typeof value === 'string' ? value.split(',') : value,
@@ -68,9 +68,9 @@ export class addQuestionDto {
   @ApiProperty({
     example: ['दिल्ली', 'नई दिल्ली', 'बैंगलोर', 'मुंबई'],
     description: 'प्रश्नों के विकल्प',
-    required: true,
+    required: false,
   })
-  options_hi: string[];
+  options_hi?: string[];
 
   @IsArray()
   @ArrayNotEmpty()
@@ -86,8 +86,8 @@ export class addQuestionDto {
   })
   correctAnswers: string[];
 
+  @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()
   @IsString({ each: true })
   @Transform(({ value }) =>
     typeof value === 'string' ? value.split(',') : value,
@@ -96,9 +96,9 @@ export class addQuestionDto {
     example: ['नई दिल्ली', 'मुंबई'],
     description:
       'यदि एकाधिक उत्तरों की अनुमति हो तो संभावित सही उत्तरों की सूची',
-    required: true,
+    required: false,
   })
-  correctAnswers_hi: string[];
+  correctAnswers_hi?: string[];
 
   @IsNotEmpty()
   @IsNumber()
@@ -154,7 +154,7 @@ export class addQuestionDto {
       '2011 की जनगणना के अनुसार, भारत में अनुसूचित जनजाति (एसटी) की आबादी कुल जनसंख्या का 8.6% थी।',
     description: 'सही उत्तर के लिए हिंदी में समाधान जोड़ें',
   })
-  solution_hi: string;
+  solution_hi?: string;
 }
 
 export class updateQuestionDto extends PartialType(addQuestionDto) {}

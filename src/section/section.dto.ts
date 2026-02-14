@@ -16,9 +16,14 @@ export class createSectionDto {
   @ApiProperty({
     example: 'योग्यता तर्क',
     description: 'अनुभाग का नाम दर्ज करें',
-    required: true,
   })
-  name_hi: string;
+  @IsOptional()
+  @ApiProperty({
+    example: 'योग्यता तर्क',
+    description: 'अनुभाग का नाम दर्ज करें (Hindi, optional)',
+    required: false,
+  })
+  name_hi?: string;
 
   @IsNumber()
   @IsNotEmpty()
