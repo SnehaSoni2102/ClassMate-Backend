@@ -114,5 +114,41 @@ export class QuizService {
     if (!doc) throw new NotFoundException('Quiz not found');
     return { message: 'Quiz deleted', success: true };
   }
+
+  async getCompletedQuizzes() {
+    const now = new Date();
+    // quizzes explicitly marked completed or whose end datetime is past
+    const docs = await this.quizModel.find({
+      $or: [{ status: 'completed' }, { endDate: { $exists: true } }],
+    }).lean();
+
+    const completed = docs.filter((doc: any) => {
+      if (doc.status === 'completed') return true;
+      if (!doc.endDate || !doc.endTime) return false;
+      const end = new Date(doc.endDate);
+      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
+      end.setHours(eh, em, 0, 0);
+      return now > end;
+    });
+
+    return { message: 'Completed quizzes fetched', data: completed, success: true };
+  }
+
+  async getInProgressQuizzes() {
+    const now = new Date();
+    const docs = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
+    const inProgress = docs.filter((doc: any) => {
+      if (doc.status === 'active') return true;
+      if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime) return false;
+      const start = new Date(doc.startDate);
+      const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
+      start.setHours(sh, sm, 0, 0);
+      const end = new Date(doc.endDate);
+      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
+      end.setHours(eh, em, 0, 0);
+      return now >= start && now <= end;
+    });
+    return { message: 'In-progress quizzes fetched', data: inProgress, success: true };
+  }
 }
 

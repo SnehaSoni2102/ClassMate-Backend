@@ -27,6 +27,18 @@ export class QuizController {
     return this.quizService.findAll();
   }
 
+  @Get('completed')
+  @ApiOperation({ summary: 'List completed quizzes' })
+  async getCompleted() {
+    return this.quizService.getCompletedQuizzes();
+  }
+
+  @Get('in-progress')
+  @ApiOperation({ summary: 'List in-progress quizzes' })
+  async getInProgress() {
+    return this.quizService.getInProgressQuizzes();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get quiz by id' })
   async findOne(@Param('id') id: string) {
