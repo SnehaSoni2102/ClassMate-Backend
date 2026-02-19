@@ -21,6 +21,23 @@ export class QuizController {
     return this.quizService.create(dto, userId);
   }
 
+  @Post('create/group/:groupId')
+  @ApiOperation({ summary: 'Create a quiz inside a group' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  async createInGroup(@Param('groupId') groupId: string, @Body() dto: CreateQuizDto, @Request() req) {
+    const userId = req.user?._id;
+    return this.quizService.createInGroup(groupId, dto, userId);
+  }
+
+  @Get('group/:groupId/active')
+  @ApiOperation({ summary: 'List active quizzes for a group' })
+  async getActiveByGroup(@Param('groupId') groupId: string) {
+    return this.quizService.getActiveByGroup(groupId);
+  }
+
   @Get('all')
   @ApiOperation({ summary: 'List quizzes' })
   async findAll() {

@@ -47,6 +47,9 @@ export class quizModule {
   @Prop()
   negativeMarks?: number;
 
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'examModule' })
+  exam?: mongoose.Types.ObjectId;
+
   @Prop({ type: [String], default: [] })
   languageOptions?: string[];
 

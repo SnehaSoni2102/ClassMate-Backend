@@ -10,6 +10,7 @@ import {
   ValidateIf,
   IsDateString,
 } from 'class-validator';
+import { IsMongoId } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class QuizQuestionDto {
@@ -72,6 +73,11 @@ export class CreateQuizDto {
   @IsOptional()
   @IsNumber()
   negativeMarks?: number;
+
+  @IsOptional()
+  @IsMongoId()
+  @ApiProperty({ example: '683dbace936c9cd07e7f1816', description: 'Exam id', required: false })
+  exam?: string;
 
   @IsArray()
   @IsString({ each: true })
@@ -148,5 +154,17 @@ export class UpdateQuizDto {
   @IsOptional()
   @IsString()
   endTime?: string;
+ 
+  @IsOptional()
+  @IsNumber()
+  totalMarks?: number;
+
+  @IsOptional()
+  @IsNumber()
+  marksPerQuestion?: number;
+
+  @IsOptional()
+  @IsNumber()
+  negativeMarks?: number;
 }
 
