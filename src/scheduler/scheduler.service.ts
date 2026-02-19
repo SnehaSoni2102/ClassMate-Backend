@@ -7,6 +7,7 @@ import { sectionModule } from 'src/section/section.schema';
 import { userTestAttemptModule } from 'src/user-test-attempt/user-test-attempt.schema';
 import { authModule } from 'src/users/users.schema';
 import { bannerModule } from 'src/banner/banner.schema';
+import { quizModule } from 'src/quiz/quiz.schema';
 
 @Injectable()
 export class SchedulerService {
@@ -19,6 +20,7 @@ export class SchedulerService {
     private userTestAttemptModel: Model<userTestAttemptModule>,
     @InjectModel(authModule.name) private authModel: Model<authModule>,
     @InjectModel(bannerModule.name) private bannerModel: Model<bannerModule>,
+    @InjectModel(quizModule.name) private quizModel: Model<any>,
   ) {}
 
   // runs every day at midnight
@@ -26,6 +28,32 @@ export class SchedulerService {
   async handleDailyCleanup() {
     const now = new Date();
     try {
+      // Update quiz statuses based on schedule
+      try {
+        const quizzes = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
+        for (const q of quizzes) {
+          try {
+            if (!q.startDate || !q.startTime || !q.endDate || !q.endTime) continue;
+            const start = new Date(q.startDate);
+            const [sh, sm] = (q.startTime || '00:00').split(':').map(Number);
+            start.setHours(sh, sm, 0, 0);
+            const end = new Date(q.endDate);
+            const [eh, em] = (q.endTime || '00:00').split(':').map(Number);
+            end.setHours(eh, em, 0, 0);
+
+            if (now > end && q.status !== 'completed') {
+              await this.quizModel.updateOne({ _id: q._id }, { status: 'completed' });
+            } else if (now >= start && now <= end && q.status !== 'active') {
+              await this.quizModel.updateOne({ _id: q._id }, { status: 'active' });
+            }
+          } catch (err) {
+            this.logger.error('Failed to update quiz status for', (q as any)._id, err as any);
+          }
+        }
+      } catch (err) {
+        this.logger.error('Failed to scan quizzes for status update', err as any);
+      }
+
       const expiredTests = await this.testModel.find({
         deletionAt: { $lte: now },
       });

@@ -29,6 +29,7 @@ import { PricingModule } from './pricing/pricing.module';
 import { ReportModule } from './report/report.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { QuizModule } from './quiz/quiz.module';
 
 @Module({
   imports: [
@@ -61,6 +62,8 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     UserSubscriptionModule,
     PricingModule,
     ReportModule,
+    // Quiz module
+    QuizModule,
     // Scheduler for periodic cleanup tasks (deleting tests after deletionAt)
     SchedulerModule,
   ],

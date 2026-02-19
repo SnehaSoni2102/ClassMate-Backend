@@ -6,6 +6,7 @@ import { sectionModule, sectionSchema } from 'src/section/section.schema';
 import { userTestAttemptModule, userTestAttemptSchema } from 'src/user-test-attempt/user-test-attempt.schema';
 import { authModule, authSchema } from 'src/users/users.schema';
 import { bannerModule, bannerSchema } from 'src/banner/banner.schema';
+import { quizModule, quizSchema } from 'src/quiz/quiz.schema';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { bannerModule, bannerSchema } from 'src/banner/banner.schema';
     ]),
     MongooseModule.forFeature([{ name: authModule.name, schema: authSchema }]),
     MongooseModule.forFeature([{ name: bannerModule.name, schema: bannerSchema }]),
+    MongooseModule.forFeature([{ name: quizModule.name, schema: quizSchema }]),
   ],
   providers: [SchedulerService],
 })
