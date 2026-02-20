@@ -18,7 +18,10 @@ export class QuizAttemptService {
     const user = await this.authModel.findById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const quiz = await this.quizModel.findById(dto.quizId);
+    const quiz = await this.quizModel
+      .findById(dto.quizId)
+      .populate('questions')
+      .exec();
     if (!quiz) throw new NotFoundException('Quiz not found');
 
     // ensure quiz active
@@ -52,8 +55,12 @@ export class QuizAttemptService {
       if (!a.selectedOption) continue;
       attempted++;
       const selected = a.selectedOption.trim().toLowerCase();
-      const correctOpt = (question.correctOption || '').trim().toLowerCase();
-      if (selected === correctOpt) {
+      const correctAnswers: string[] = ((question as any).correctAnswers ||
+        []) as string[];
+      const isCorrect = correctAnswers.some(
+        (ans) => ans && ans.trim().toLowerCase() === selected,
+      );
+      if (isCorrect) {
         correct++;
         score += marksPerQ;
       } else {

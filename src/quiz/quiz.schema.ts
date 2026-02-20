@@ -9,7 +9,7 @@ export class quizModule {
   @Prop()
   description?: string;
 
-  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'QuestionModule' }] })
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'questionModule' }] })
   questions: mongoose.Types.ObjectId[];
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'authModule' })

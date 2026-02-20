@@ -4,32 +4,10 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  ValidateNested,
-  ArrayMinSize,
   IsNumber,
-  ValidateIf,
   IsDateString,
+  IsMongoId,
 } from 'class-validator';
-import { IsMongoId } from 'class-validator';
-import { Type } from 'class-transformer';
-
-class QuizQuestionDto {
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ example: 'What is the capital of India?' })
-  text: string;
-
-  @IsArray()
-  @ArrayMinSize(2)
-  @IsString({ each: true })
-  @ApiProperty({ example: ['Delhi', 'Mumbai', 'Kolkata'] })
-  options: string[];
-
-  @IsOptional()
-  @IsString()
-  @ApiProperty({ example: 'Delhi', required: false })
-  correctOption?: string;
-}
 
 export class CreateQuizDto {
   @IsString()
@@ -111,10 +89,14 @@ export class CreateQuizDto {
   testType?: 'free' | 'paid';
 
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => QuizQuestionDto)
-  @ApiProperty({ type: [QuizQuestionDto] })
-  questions: QuizQuestionDto[];
+  @IsMongoId({ each: true })
+  @ApiProperty({
+    type: [String],
+    example: ['68321cf27b3ced483e4c200a', '68321cf27b3ced483e4c200b'],
+    description: 'IDs of questions to include in the quiz',
+    required: true,
+  })
+  questions: string[];
 }
 
 export class UpdateQuizDto {
@@ -128,9 +110,8 @@ export class UpdateQuizDto {
 
   @IsOptional()
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => QuizQuestionDto)
-  questions?: QuizQuestionDto[];
+  @IsMongoId({ each: true })
+  questions?: string[];
  
   @IsOptional()
   @IsNumber()
