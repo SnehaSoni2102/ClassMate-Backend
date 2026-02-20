@@ -64,6 +64,8 @@ import { QuizModule } from './quiz/quiz.module';
     ReportModule,
     // Quiz module
     QuizModule,
+    // Quiz attempts
+    require('./quiz-attempt/quiz-attempt.module').QuizAttemptModule,
     // Scheduler for periodic cleanup tasks (deleting tests after deletionAt)
     SchedulerModule,
   ],
