@@ -551,6 +551,40 @@ export class GroupService {
     };
   }
 
+  async fetchAllGroupsListAll(userId: string | null) {
+    const pipeline: any[] = [];
+
+    if (userId) {
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+      pipeline.push({
+        $match: {
+          admin: { $ne: userObjectId },
+          'members.user': { $ne: userObjectId },
+        },
+      });
+    }
+
+    pipeline.push({
+      $project: {
+        _id: 1,
+        title: 1,
+      },
+    });
+
+    const groups = await this.groupModule.aggregate(pipeline).exec();
+
+    const data = groups.map((group) => ({
+      id: group._id,
+      name: group.title,
+    }));
+
+    return {
+      message: 'Groups list fetched successfully',
+      success: true,
+      data,
+    };
+  }
+
   async assignGroupManager(
     groupId: string,
     userId: string,

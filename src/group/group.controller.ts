@@ -114,6 +114,36 @@ export class GroupController {
     return this.groupService.fetchAllGroupsWithType(userId ?? null);
   }
 
+  @Get('list-all')
+  @ApiOperation({ summary: 'Fetch all groups (id and name only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Groups list fetched successfully',
+  })
+  @ApiBearerAuth()
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  fetchAllGroupsListAll(@Request() req: RequestWithAuthHeaders) {
+    let userId: string | undefined;
+
+    const authHeader = req.headers['authorization'];
+    const headerStr =
+      typeof authHeader === 'string'
+        ? authHeader
+        : Array.isArray(authHeader)
+          ? authHeader[0]
+          : undefined;
+    if (headerStr?.startsWith('Bearer ')) {
+      const token = headerStr.split(' ')[1];
+      try {
+        const payload = this.jwtService.verify(token);
+        userId = payload?.data?._id;
+      } catch {
+        userId = undefined;
+      }
+    }
+    return this.groupService.fetchAllGroupsListAll(userId ?? null);
+  }
+
   @Get('/search-groups')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
