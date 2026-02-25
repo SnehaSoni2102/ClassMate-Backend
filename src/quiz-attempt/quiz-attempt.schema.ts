@@ -5,8 +5,8 @@ class QuizAnswer {
   @Prop({ required: true })
   questionIndex: number;
 
-  @Prop()
-  selectedOption?: string;
+  @Prop({ type: [String], default: [] })
+  selectedOption?: string[];
 }
 
 @Schema({ timestamps: true })
@@ -40,6 +40,15 @@ export class quizAttemptModule {
 
   @Prop()
   totalTimeSpent?: number;
+ 
+  @Prop({ enum: ['global', 'group'], default: 'global' })
+  scope?: string;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'groupModule' })
+  groupId?: mongoose.Types.ObjectId;
+
+  @Prop()
+  languageSelected?: string;
 }
 
 export const quizAttemptSchema = SchemaFactory.createForClass(quizAttemptModule);

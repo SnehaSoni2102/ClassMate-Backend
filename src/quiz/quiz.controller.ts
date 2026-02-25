@@ -3,7 +3,7 @@ import { QuizService } from './quiz.service';
 import { CreateQuizDto, UpdateQuizDto } from './quiz.dto';
 import { JwtAuthGuard } from 'guards/jwt.guards';
 import { Roles, UserRole } from 'utils/helper';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('QUIZ')
 @Controller('quiz')
@@ -12,6 +12,7 @@ export class QuizController {
 
   @Post('create')
   @ApiOperation({ summary: 'Create a quiz' })
+  @ApiBody({ type: CreateQuizDto })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ whitelist: true }))
@@ -23,6 +24,7 @@ export class QuizController {
 
   @Post('create/group/:groupId')
   @ApiOperation({ summary: 'Create a quiz inside a group' })
+  @ApiBody({ type: CreateQuizDto })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ whitelist: true }))

@@ -2,7 +2,7 @@ import { Body, Controller, Post, Request, UseGuards, UsePipes, ValidationPipe } 
 import { QuizAttemptService } from './quiz-attempt.service';
 import { SubmitQuizDto } from './quiz-attempt.dto';
 import { JwtAuthGuard } from 'guards/jwt.guards';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiBody } from '@nestjs/swagger';
 
 @ApiTags('QUIZ-ATTEMPT')
 @Controller('quiz-attempt')
@@ -11,6 +11,7 @@ export class QuizAttemptController {
 
   @Post('submit')
   @ApiOperation({ summary: 'Submit quiz answers' })
+  @ApiBody({ type: SubmitQuizDto })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({ whitelist: true }))
