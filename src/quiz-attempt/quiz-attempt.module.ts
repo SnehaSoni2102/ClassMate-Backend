@@ -5,6 +5,7 @@ import { quizModule, quizSchema } from 'src/quiz/quiz.schema';
 import { authModule, authSchema } from 'src/users/users.schema';
 import { notificationModule, notificationSchema } from 'src/notification/notification.schema';
 import { userSubscriptionModule, userSubscriptionSchema } from 'src/user-subscription/user-subscription.schema';
+import { questionModule, questionSchema } from 'src/question/question.schema';
 import { QuizAttemptService } from './quiz-attempt.service';
 import { QuizAttemptController } from './quiz-attempt.controller';
 
@@ -16,6 +17,7 @@ import { QuizAttemptController } from './quiz-attempt.controller';
       { name: authModule.name, schema: authSchema },
       { name: notificationModule.name, schema: notificationSchema },
       { name: userSubscriptionModule.name, schema: userSubscriptionSchema },
+      { name: questionModule.name, schema: questionSchema },
     ]),
   ],
   providers: [QuizAttemptService],
