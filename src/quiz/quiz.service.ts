@@ -246,7 +246,11 @@ export class QuizService {
       end.setHours(eh, em, 0, 0);
       return now >= start && now <= end;
     });
-    return { message: 'In-progress quizzes fetched', data: inProgress, success: true };
+    return {
+      message: 'Upcomming quizzes fetched',
+      data: inProgress,
+      success: true,
+    };
   }
 }
 

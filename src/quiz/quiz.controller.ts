@@ -52,9 +52,9 @@ export class QuizController {
     return this.quizService.getCompletedQuizzes();
   }
 
-  @Get('in-progress')
-  @ApiOperation({ summary: 'List in-progress quizzes' })
-  async getInProgress() {
+  @Get('upcomming')
+  @ApiOperation({ summary: 'List upcomming quizzes' })
+  async getUpcomming() {
     return this.quizService.getInProgressQuizzes();
   }
 

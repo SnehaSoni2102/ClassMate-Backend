@@ -275,7 +275,7 @@ export class updateStatusOfTestDto {
     example: 'published',
     description: 'Enter the status',
     required: true,
-    enum: ['published', 'in-progress'],
+    enum: ['published', 'upcomming'],
   })
   status: string;
 }
