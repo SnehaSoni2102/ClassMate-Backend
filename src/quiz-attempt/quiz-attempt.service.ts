@@ -45,10 +45,7 @@ export class QuizAttemptService {
     const user = await this.authModel.findById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const quiz = await this.quizModel
-      .findById(dto.quizId)
-      .populate('questions')
-      .exec();
+    const quiz = await this.quizModel.findById(dto.quizId).exec();
     if (!quiz) throw new NotFoundException('Quiz not found');
 
     // ensure quiz active
@@ -100,9 +97,24 @@ export class QuizAttemptService {
     const marksPerQ = (quiz as any).marksPerQuestion ?? 1;
     const negative = (quiz as any).negativeMarks ?? 0;
 
+    const questionEntries = (quiz as any).questions || [];
+    const questionIds: any[] = questionEntries.map((e: any) =>
+      e?.questionId ? e.questionId : null,
+    );
+    const uniqueQuestionIds = Array.from(new Set(questionIds.filter(Boolean)));
+    const questionsDocs = uniqueQuestionIds.length
+      ? await this.questionModel
+          .find({ _id: { $in: uniqueQuestionIds } })
+          .lean()
+      : [];
+    const questionMap = new Map(
+      questionsDocs.map((q: any) => [String(q._id), q]),
+    );
+
     for (const a of dto.answers) {
       const qIndex = a.questionIndex;
-      const question = (quiz as any).questions?.[qIndex];
+      const entry = questionEntries?.[qIndex];
+      const question = entry ? questionMap.get(String(entry.questionId)) : null;
       if (!question) continue;
       if (
         !a.selectedOption ||
@@ -113,8 +125,13 @@ export class QuizAttemptService {
       const selectedArray = Array.isArray(a.selectedOption)
         ? a.selectedOption.map((s) => String(s).trim().toLowerCase())
         : [String(a.selectedOption).trim().toLowerCase()];
-      const correctAnswers = ((question as any).correctAnswers || []).map(
-        (c: any) => String(c).trim().toLowerCase(),
+      const language = dto.language === 'hi' ? 'hi' : 'en';
+      const correctRaw =
+        language === 'hi'
+          ? (question as any).correctAnswers_hi
+          : (question as any).correctAnswers;
+      const correctAnswers = (correctRaw || []).map((c: any) =>
+        String(c).trim().toLowerCase(),
       );
       // treat as correct when selected set matches correctAnswers set (order-insensitive)
       const selectedSet = new Set(selectedArray);
@@ -199,10 +216,7 @@ export class QuizAttemptService {
       .lean();
     if (!attempt) throw new NotFoundException('Quiz attempt not found');
 
-    const quiz = await this.quizModel
-      .findById(quizId)
-      .populate('questions')
-      .lean();
+    const quiz = await this.quizModel.findById(quizId).lean();
     if (!quiz) throw new NotFoundException('Quiz not found');
 
     const answerMap = new Map<number, string[]>();
@@ -214,12 +228,26 @@ export class QuizAttemptService {
     }
 
     const language = attempt.languageSelected === 'hi' ? 'hi' : 'en';
-    const questionsList = (quiz as any).questions || [];
+    const questionEntries = (quiz as any).questions || [];
+    const questionIds = questionEntries
+      .map((e: any) => e?.questionId)
+      .filter(Boolean);
+
+    const questionsDocs = questionIds.length
+      ? await this.questionModel
+          .find({ _id: { $in: questionIds } })
+          .lean()
+      : [];
+    const questionMap = new Map(
+      questionsDocs.map((q: any) => [String(q._id), q]),
+    );
     const questionStats: QuizQuestionStat[] = [];
 
-    for (let i = 0; i < questionsList.length; i++) {
-      const q = questionsList[i];
-      const questionId = q._id.toString();
+    for (let i = 0; i < questionEntries.length; i++) {
+      const entry = questionEntries[i];
+      const q = entry ? questionMap.get(String(entry.questionId)) : null;
+      if (!q) continue;
+      const questionId = String(entry?.questionId);
       const selectedAnswers = answerMap.get(i) || [];
       const correctAnswers = (
         language === 'hi' ? q.correctAnswers_hi : q.correctAnswers
@@ -258,10 +286,7 @@ export class QuizAttemptService {
     const attempt = await this.quizAttemptModel
       .findOne({ user: userId, quizId })
       .lean();
-    const quiz = await this.quizModel
-      .findById(quizId)
-      .populate('questions')
-      .lean();
+    const quiz = await this.quizModel.findById(quizId).lean();
 
     if (!quiz) throw new NotFoundException('Quiz not found');
 
@@ -274,9 +299,27 @@ export class QuizAttemptService {
       }
     }
 
-    const questionsList = (quiz as any).questions || [];
-    const withIndex = questionsList.map((q: any, index: number) => ({ q, index }));
+    const questionEntries = (quiz as any).questions || [];
+    const questionIds = questionEntries
+      .map((e: any) => e?.questionId)
+      .filter(Boolean);
+
+    const questionsDocs = questionIds.length
+      ? await this.questionModel
+          .find({ _id: { $in: questionIds } })
+          .lean()
+      : [];
+
+    const questionMap = new Map(
+      questionsDocs.map((q: any) => [String(q._id), q]),
+    );
+
+    const withIndex = questionEntries.map((entry: any, index: number) => ({
+      index,
+      q: entry ? questionMap.get(String(entry.questionId)) : null,
+    }));
     const filtered = withIndex.filter(({ q, index }) => {
+      if (!q) return false;
       const userAns = answerMap.get(index);
       const correctAnswers = q.correctAnswers || [];
       const selected = userAns?.selectedOption || [];
@@ -291,34 +334,36 @@ export class QuizAttemptService {
       return true;
     });
 
-    const questionsWithDetails = filtered.map(({ q, index: globalIndex }, i) => {
-      const userAns = answerMap.get(globalIndex);
-      const selected = userAns?.selectedOption || [];
-      const correctAnswers = q.correctAnswers || [];
-      const isCorrect = arraysEqual(selected, correctAnswers);
+    const questionsWithDetails = filtered.map(
+      ({ q, index: globalIndex }: any, i: number) => {
+        const userAns = answerMap.get(globalIndex);
+        const selected = userAns?.selectedOption || [];
+        const correctAnswers = q.correctAnswers || [];
+        const isCorrect = arraysEqual(selected, correctAnswers);
 
-      let marks = 0;
-      if (isCorrect) marks = q.marks ?? 1;
-      else if (selected.length > 0) marks = -(q.negativeMarks ?? 0);
+        let marks = 0;
+        if (isCorrect) marks = q.marks ?? 1;
+        else if (selected.length > 0) marks = -(q.negativeMarks ?? 0);
 
-      return {
-        questionId: q._id.toString(),
-        questionIndex: globalIndex,
-        questionNumber: i + 1,
-        title: q.text,
-        title_hi: q.text_hi,
-        image: q.image,
-        marks,
-        timeTaken: 0,
-        correctAnswers,
-        selectedAnswers: selected,
-      };
-    });
+        return {
+          questionId: q._id.toString(),
+          questionIndex: globalIndex,
+          questionNumber: i + 1,
+          title: q.text,
+          title_hi: q.text_hi,
+          image: q.image,
+          marks,
+          timeTaken: 0,
+          correctAnswers,
+          selectedAnswers: selected,
+        };
+      },
+    );
 
     return {
       message: 'Questions fetched successfully',
       data: {
-        totalQuestions: `${questionsWithDetails.length}/${questionsList.length}`,
+        totalQuestions: `${questionsWithDetails.length}/${questionEntries.length}`,
         questions: questionsWithDetails,
       },
       success: true,
@@ -335,14 +380,17 @@ export class QuizAttemptService {
       .lean();
     if (!attempt) throw new NotFoundException('Quiz attempt not found');
 
-    const quiz = await this.quizModel
-      .findById(quizId)
-      .populate('questions')
-      .lean();
+    const quiz = await this.quizModel.findById(quizId).lean();
     if (!quiz) throw new NotFoundException('Quiz not found');
 
-    const questionsList = (quiz as any).questions || [];
-    const question = questionsList[questionIndex];
+    const questionEntries = (quiz as any).questions || [];
+    const entry = questionEntries[questionIndex];
+    if (!entry) throw new NotFoundException('Question not found at this index');
+
+    const questionId = entry?.questionId;
+    const question = questionId
+      ? await this.questionModel.findById(questionId).lean()
+      : null;
     if (!question)
       throw new NotFoundException('Question not found at this index');
 

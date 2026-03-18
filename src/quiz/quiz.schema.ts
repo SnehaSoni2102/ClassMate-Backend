@@ -1,6 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 
+class QuizQuestionEntry {
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'questionModule', required: true })
+  questionId: mongoose.Types.ObjectId;
+
+  @Prop({ required: true })
+  timeInMinutes: number;
+}
+
 @Schema({ timestamps: true })
 export class quizModule {
   @Prop({ required: true })
@@ -9,8 +17,8 @@ export class quizModule {
   @Prop()
   description?: string;
 
-  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'questionModule' }] })
-  questions: mongoose.Types.ObjectId[];
+  @Prop({ type: [QuizQuestionEntry], default: [] })
+  questions: QuizQuestionEntry[];
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'authModule' })
   createdBy?: mongoose.Types.ObjectId;

@@ -36,44 +36,58 @@ export class QuizController {
 
   @Get('group/:groupId/active')
   @ApiOperation({ summary: 'List active quizzes for a group' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getActiveByGroup(@Param('groupId') groupId: string) {
     return this.quizService.getActiveByGroup(groupId);
   }
 
   @Get('group/:groupId/upcomming')
   @ApiOperation({ summary: 'List upcomming quizzes for a group' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getUpcommingByGroup(@Param('groupId') groupId: string) {
     return this.quizService.getUpcommingByGroup(groupId);
   }
 
   @Get('group/:groupId/completed')
   @ApiOperation({ summary: 'List completed quizzes for a group' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getCompletedByGroup(@Param('groupId') groupId: string) {
     return this.quizService.getCompletedByGroup(groupId);
   }
 
   @Get('all')
   @ApiOperation({ summary: 'List quizzes' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async findAll() {
     return this.quizService.findAll();
   }
 
   @Get('completed')
   @ApiOperation({ summary: 'List completed quizzes' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getCompleted() {
     return this.quizService.getCompletedQuizzes();
   }
 
   @Get('upcomming')
   @ApiOperation({ summary: 'List upcomming quizzes' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   async getUpcomming() {
     return this.quizService.getUpcommingQuizzes();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get quiz by id' })
-  async findOne(@Param('id') id: string) {
-    return this.quizService.findOne(id);
+  @Get(':quizId')
+  @ApiOperation({ summary: 'Get quiz by quizId' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async findOne(@Param('quizId') quizId: string) {
+    return this.quizService.findOne(quizId);
   }
 
   @Patch(':id')

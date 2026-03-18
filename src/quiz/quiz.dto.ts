@@ -177,8 +177,9 @@ export class UpdateQuizDto {
 
   @IsOptional()
   @IsArray()
-  @IsMongoId({ each: true })
-  questions?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => QuizQuestionTimeDto)
+  questions?: QuizQuestionTimeDto[];
  
   @IsOptional()
   @IsNumber()

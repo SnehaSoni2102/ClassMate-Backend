@@ -5,6 +5,8 @@ import { Model } from 'mongoose';
 import { CreateQuizDto, UpdateQuizDto } from './quiz.dto';
 import { QuizSchedulerService } from './quiz-scheduler.service';
 import { groupModule } from 'src/group/group.schema';
+import { questionModule } from 'src/question/question.schema';
+import mongoose from 'mongoose';
 
 @Injectable()
 export class QuizService {
@@ -12,6 +14,7 @@ export class QuizService {
     @InjectModel(quizModule.name) private quizModel: Model<quizModule>,
     @InjectModel(groupModule.name) private groupModel: Model<any>,
     private quizScheduler: QuizSchedulerService,
+    @InjectModel(questionModule.name) private questionModel: Model<questionModule>,
   ) {}
 
   async create(createDto: CreateQuizDto, userId?: string) {
@@ -94,7 +97,7 @@ export class QuizService {
     const payload: any = {
       ...createDto,
       // normalize scheduling fields (especially for scheaduleNow=true)
-      questions: questionIds,
+      questions,
       startDate,
       startTime,
       endDate,
@@ -215,7 +218,7 @@ export class QuizService {
 
     const payload: any = {
       ...createDto,
-      questions: questionIds,
+      questions,
       startDate,
       startTime,
       endDate,
@@ -355,17 +358,71 @@ export class QuizService {
     const doc = await this.quizModel.findById(id).lean();
     if (!doc) throw new NotFoundException('Quiz not found');
     const now = new Date();
-    if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime) {
-      throw new NotFoundException('Quiz not available');
+
+    let isAvailableNow = false;
+    let availability: 'upcomming' | 'active' | 'completed' | 'unknown' = 'unknown';
+
+    if (doc.startDate && doc.startTime && doc.endDate && doc.endTime) {
+      const start = new Date(doc.startDate);
+      const [sh, sm] = String(doc.startTime || '00:00').split(':').map(Number);
+      start.setHours(sh, sm, 0, 0);
+
+      const end = new Date(doc.endDate);
+      const [eh, em] = String(doc.endTime || '00:00').split(':').map(Number);
+      end.setHours(eh, em, 0, 0);
+
+      if (now < start) {
+        availability = 'upcomming';
+        isAvailableNow = false;
+      } else if (now > end) {
+        availability = 'completed';
+        isAvailableNow = false;
+      } else {
+        availability = 'active';
+        isAvailableNow = true;
+      }
     }
-    const start = new Date(doc.startDate);
-    const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
-    start.setHours(sh, sm, 0, 0);
-    const end = new Date(doc.endDate);
-    const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
-    end.setHours(eh, em, 0, 0);
-    if (now < start || now > end) throw new NotFoundException('Quiz not available at this time');
-    return { message: 'Quiz fetched', data: doc, success: true };
+
+    const questionEntries = Array.isArray((doc as any).questions)
+      ? (doc as any).questions
+      : [];
+    const questionIds = questionEntries
+      .map((q: any) => q?.questionId)
+      .filter(Boolean)
+      .map((id: any) => {
+        // Ensure we query using ObjectId so `$in` matches reliably.
+        return mongoose.Types.ObjectId.isValid(String(id))
+          ? new mongoose.Types.ObjectId(String(id))
+          : id;
+      });
+
+    const questionsDocs = questionIds.length
+      ? await this.questionModel
+          .find({ _id: { $in: questionIds } })
+          .lean()
+      : [];
+
+    const questionMap = new Map(
+      questionsDocs.map((q: any) => [String(q._id), q]),
+    );
+
+    const populatedQuestions = questionEntries.map((entry: any) => {
+      const qId = String(entry?.questionId);
+      const q = questionMap.get(qId);
+      // Keep timeInMinutes along with the fully populated question document
+      return q ? { ...q, timeInMinutes: entry?.timeInMinutes } : entry;
+    });
+
+    return {
+      message: 'Quiz fetched',
+      data: {
+        ...doc,
+        questions: populatedQuestions,
+        isAvailableNow,
+        availability,
+      },
+      success: true,
+    };
   }
 
   async update(id: string, updateDto: UpdateQuizDto) {
