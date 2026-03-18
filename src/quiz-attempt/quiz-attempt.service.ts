@@ -871,6 +871,99 @@ export class QuizAttemptService {
     };
   }
 
+  async getUserFinalResult(
+    quizId: string,
+    userId: string,
+    scope: 'global' | 'group',
+    groupId?: string,
+  ) {
+    if (scope === 'group' && !groupId) {
+      throw new BadRequestException('groupId is required when scope is group');
+    }
+
+    const filter: any = { quizId, scope };
+    if (scope === 'group') filter.groupId = groupId;
+
+    const attempts = await this.quizAttemptModel
+      .find(filter)
+      .populate('user')
+      .lean();
+
+    if (!attempts || attempts.length === 0) {
+      return {
+        message: 'No attempts found',
+        data: { result: null },
+        success: true,
+      };
+    }
+
+    const isBetterAttempt = (a: any, b: any) => {
+      const scoreA = a?.score ?? 0;
+      const scoreB = b?.score ?? 0;
+      if (scoreA !== scoreB) return scoreA > scoreB;
+      const tA = a?.totalTimeSpent ?? 0;
+      const tB = b?.totalTimeSpent ?? 0;
+      return tA < tB;
+    };
+
+    // keep best attempt per user
+    const bestByUser = new Map<string, any>();
+    for (const attempt of attempts) {
+      const uid =
+        (attempt.user as any)?._id?.toString?.() ?? attempt.user.toString();
+      if (!bestByUser.has(uid) || isBetterAttempt(attempt, bestByUser.get(uid))) {
+        bestByUser.set(uid, attempt);
+      }
+    }
+
+    const ranking = Array.from(bestByUser.values()).sort((a: any, b: any) => {
+      const scoreA = a?.score ?? 0;
+      const scoreB = b?.score ?? 0;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      const tA = a?.totalTimeSpent ?? 0;
+      const tB = b?.totalTimeSpent ?? 0;
+      return tA - tB;
+    });
+
+    const idx = ranking.findIndex((a: any) => {
+      const uid =
+        (a.user as any)?._id?.toString?.() ?? a.user?.toString?.() ?? '';
+      return uid === userId;
+    });
+
+    const bestAttempt = idx >= 0 ? ranking[idx] : null;
+    if (!bestAttempt) {
+      return {
+        message: 'No attempt found for this user',
+        data: { result: null, rank: null },
+        success: true,
+      };
+    }
+
+    const attemptedQuestions = bestAttempt.attemptedQuestions ?? 0;
+    const correctAnswers = bestAttempt.correctAnswers ?? 0;
+    const accuracy =
+      attemptedQuestions > 0 ? (correctAnswers / attemptedQuestions) * 100 : 0;
+
+    const user = bestAttempt.user as any;
+    return {
+      message: 'User final result fetched successfully',
+      data: {
+        rank: idx + 1,
+        name: user?.Name || 'User',
+        score: bestAttempt.score ?? 0,
+        totalTimeSpent: bestAttempt.totalTimeSpent ?? 0,
+        accuracy: +accuracy.toFixed(2),
+        attemptedQuestions,
+        correctAnswers,
+        wrongAnswers: bestAttempt.wrongAnswers ?? 0,
+        profilePicture: user?.profilePicture || '',
+        groupId: bestAttempt.groupId ?? null,
+      },
+      success: true,
+    };
+  }
+
   async generateCertificatePdf(quizId: string, userId: string): Promise<Buffer> {
     const attempt = await this.quizAttemptModel
       .findOne({ quizId, user: userId })

@@ -208,6 +208,39 @@ export class QuizAttemptController {
     return this.svc.getFinalResults(quizId, scope, groupId);
   }
 
+  @Get('user-result/:quizId')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  @ApiOperation({ summary: 'Fetch single user final quiz result' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Roles(UserRole.ADMIN, UserRole.STUDENT, UserRole.SUPERADMIN)
+  @ApiQuery({
+    name: 'scope',
+    enum: ['global', 'group'],
+    required: false,
+    description: 'Ranking scope',
+    example: 'global',
+  })
+  @ApiQuery({
+    name: 'groupId',
+    required: false,
+    description: 'Required only when scope=group',
+    example: '696d0f8a0f7a559e4cd09a1c',
+  })
+  getUserFinalResult(
+    @Request() req,
+    @Param('quizId') quizId: string,
+    @Query('scope') scope: 'global' | 'group' = 'global',
+    @Query('groupId') groupId?: string,
+  ) {
+    return this.svc.getUserFinalResult(
+      quizId,
+      req.user._id,
+      scope,
+      groupId,
+    );
+  }
+
   @Get(':quizId/question/:questionIndex')
   @ApiOperation({ summary: 'Get question details for a quiz attempt by index' })
   @UseGuards(JwtAuthGuard)
