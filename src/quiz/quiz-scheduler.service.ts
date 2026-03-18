@@ -14,7 +14,7 @@ export class QuizSchedulerService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    // On startup, schedule start/end jobs for all quizzes with future start/end
+    // On startup, schedule start jobs for all quizzes with future start
     this.initSchedules().catch((err) => {
       this.logger.error('Failed to initialize quiz schedules', err);
     });
@@ -46,14 +46,6 @@ export class QuizSchedulerService implements OnModuleInit {
           this.scheduleJob(`quiz-start-${q._id}`, start, async () => {
             await this.quizModel.updateOne({ _id: q._id }, { status: 'active' });
             this.logger.log(`Quiz ${q._id} marked active`);
-          });
-        }
-
-        // schedule end if in future
-        if (end > now) {
-          this.scheduleJob(`quiz-end-${q._id}`, end, async () => {
-            await this.quizModel.updateOne({ _id: q._id }, { status: 'completed' });
-            this.logger.log(`Quiz ${q._id} marked completed`);
           });
         }
       } catch (err) {
@@ -91,7 +83,7 @@ export class QuizSchedulerService implements OnModuleInit {
   }
 
   public cancelJobsForQuiz(quizId: string) {
-    for (const prefix of ['quiz-start-', 'quiz-end-']) {
+    for (const prefix of ['quiz-start-']) {
       const name = `${prefix}${quizId}`;
       try {
         const t = this.schedulerRegistry.getTimeout(name);
@@ -110,20 +102,11 @@ export class QuizSchedulerService implements OnModuleInit {
     const start = new Date(q.startDate);
     const [sh, sm] = (q.startTime || '00:00').split(':').map(Number);
     start.setHours(sh, sm, 0, 0);
-    const end = new Date(q.endDate);
-    const [eh, em] = (q.endTime || '00:00').split(':').map(Number);
-    end.setHours(eh, em, 0, 0);
 
     if (start > now) {
       this.scheduleJob(`quiz-start-${q._id}`, start, async () => {
         await this.quizModel.updateOne({ _id: q._id }, { status: 'active' });
         this.logger.log(`Quiz ${q._id} marked active`);
-      });
-    }
-    if (end > now) {
-      this.scheduleJob(`quiz-end-${q._id}`, end, async () => {
-        await this.quizModel.updateOne({ _id: q._id }, { status: 'completed' });
-        this.logger.log(`Quiz ${q._id} marked completed`);
       });
     }
   }

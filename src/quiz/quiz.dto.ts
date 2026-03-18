@@ -1,13 +1,41 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
+  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsNumber,
   IsDateString,
   IsMongoId,
+  Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
+
+export class QuizQuestionTimeDto {
+  @IsMongoId()
+  @IsNotEmpty()
+  @ApiProperty({
+    example: '68321cf27b3ced483e4c200a',
+    description: 'Question id from question module',
+  })
+  questionId: string;
+
+  @IsNumber()
+  @Min(1)
+  @Transform(({ value, obj }) => {
+    // accept payload key `time` as an alias for `timeInMinutes`
+    if (value !== undefined && value !== null) return value;
+    if (obj?.time !== undefined && obj?.time !== null) return obj.time;
+    return value;
+  })
+  @ApiProperty({
+    example: 2,
+    description: 'Time for this question (in minutes). Also accepts `time` alias.',
+  })
+  timeInMinutes: number;
+}
 
 export class CreateQuizDto {
   @IsString()
@@ -35,10 +63,26 @@ export class CreateQuizDto {
   @ApiProperty({ example: 10, required: false })
   totalQuestions?: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
-  @ApiProperty({ example: 30, description: 'Duration in minutes' })
-  durationInMinutes: number;
+  @Min(1)
+  @ApiProperty({
+    example: 30,
+    description:
+      'Total duration in minutes (must match sum of questions[].timeInMinutes if provided)',
+    required: false,
+  })
+  durationInMinutes?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({
+    example: false,
+    description:
+      'If true, quiz starts instantly (startDate/startTime are overridden to now)',
+    required: false,
+  })
+  scheaduleNow?: boolean;
 
   @IsOptional()
   @IsNumber()
@@ -64,39 +108,62 @@ export class CreateQuizDto {
   languageOptions?: string[];
 
   // quizzes are live only — require scheduling fields
-  @IsNotEmpty()
+  @IsOptional()
   @IsDateString()
-  @ApiProperty({ example: '2026-02-16', description: 'Start date (YYYY-MM-DD)', required: true })
-  startDate: string;
+  @ApiProperty({
+    example: '2026-02-16',
+    description: 'Start date (YYYY-MM-DD) (required when scheaduleNow=false)',
+    required: false,
+  })
+  startDate?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  @ApiProperty({ example: '10:31', description: 'Start time (HH:mm)', required: true })
-  startTime: string;
+  @ApiProperty({
+    example: '10:31',
+    description: 'Start time (HH:mm) (required when scheaduleNow=false)',
+    required: false,
+  })
+  startTime?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsDateString()
-  @ApiProperty({ example: '2026-02-20', description: 'End date (YYYY-MM-DD)', required: true })
-  endDate: string;
+  @ApiProperty({
+    example: '2026-02-20',
+    description:
+      'End date (YYYY-MM-DD). Backend computes end from questions[].time.',
+    required: false,
+  })
+  endDate?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  @ApiProperty({ example: '10:33', description: 'End time (HH:mm)', required: true })
-  endTime: string;
+  @ApiProperty({
+    example: '10:33',
+    description:
+      'End time (HH:mm). Backend computes end from questions[].time.',
+    required: false,
+  })
+  endTime?: string;
 
   @IsOptional()
   @IsString()
   testType?: 'free' | 'paid';
 
   @IsArray()
-  @IsMongoId({ each: true })
+  @ValidateNested({ each: true })
+  @Type(() => QuizQuestionTimeDto)
   @ApiProperty({
-    type: [String],
-    example: ['68321cf27b3ced483e4c200a', '68321cf27b3ced483e4c200b'],
-    description: 'IDs of questions to include in the quiz',
+    type: [QuizQuestionTimeDto],
+    example: [
+      { questionId: '68321cf27b3ced483e4c200a', timeInMinutes: 2 },
+      { questionId: '68321cf27b3ced483e4c200b', timeInMinutes: 2 },
+    ],
+    description:
+      'Questions array with per-question time (length must match totalQuestions if provided)',
     required: true,
   })
-  questions: string[];
+  questions: QuizQuestionTimeDto[];
 }
 
 export class UpdateQuizDto {

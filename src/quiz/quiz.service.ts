@@ -15,49 +15,119 @@ export class QuizService {
   ) {}
 
   async create(createDto: CreateQuizDto, userId?: string) {
-    // ensure scheduling fields are present (DTO validation covers this, but double-check)
-    if (!createDto.startDate || !createDto.startTime || !createDto.endDate || !createDto.endTime) {
-      throw new Error('startDate, startTime, endDate and endTime are required for quizzes');
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatDate = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const formatTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    let scheduleNow = !!createDto.scheaduleNow;
+    const now = new Date();
+
+    const questions = Array.isArray(createDto.questions)
+      ? createDto.questions
+      : [];
+    if (questions.length === 0) {
+      throw new BadRequestException('questions are required');
     }
 
-    const durationInSeconds = (createDto.durationInMinutes || 0) * 60;
+    const questionIds = questions.map((q) => q.questionId);
+    const questionTimesFromQuestions = questions.map((q) => q.timeInMinutes);
+
+    const questionsLen = questionIds.length;
+    const totalDurationMinutes = questionTimesFromQuestions.reduce(
+      (acc, v) => acc + v,
+      0,
+    );
+
+    if (!totalDurationMinutes || totalDurationMinutes <= 0) {
+      throw new BadRequestException(
+        'questions[].timeInMinutes must result in a positive total duration',
+      );
+    }
+
+    if (
+      createDto.durationInMinutes != null &&
+      createDto.durationInMinutes !== totalDurationMinutes
+    ) {
+      throw new BadRequestException(
+        'durationInMinutes must match sum of questions[].timeInMinutes',
+      );
+    }
+
+    let startDt: Date;
+    if (scheduleNow) {
+      startDt = now;
+    } else {
+      if (!createDto.startDate || !createDto.startTime) {
+        throw new BadRequestException(
+          'startDate and startTime are required when scheaduleNow is false',
+        );
+      }
+      const d = new Date(createDto.startDate);
+      const [sh, sm] = createDto.startTime.split(':').map(Number);
+      d.setHours(sh, sm, 0, 0);
+      // If startDate/startTime already passed, start immediately.
+      startDt = d <= now ? now : d;
+      if (d <= now) scheduleNow = true;
+    }
+
+    const endDt = new Date(startDt.getTime() + totalDurationMinutes * 60 * 1000);
+
+    const startDate = scheduleNow ? formatDate(startDt) : createDto.startDate!;
+    const startTime = scheduleNow ? formatTime(startDt) : createDto.startTime!;
+    const endDate = formatDate(endDt);
+    const endTime = formatTime(endDt);
+
+    const durationInSeconds = totalDurationMinutes * 60;
+
     // prefer explicit totalQuestions from client, otherwise derive from provided questions array
-    const totalQuestions = createDto.totalQuestions ?? (Array.isArray(createDto.questions) ? createDto.questions.length : 0);
+    const totalQuestions = createDto.totalQuestions ?? questionsLen;
 
     const marksPerQ = createDto.marksPerQuestion ?? 1;
     const expectedTotal = totalQuestions * marksPerQ;
-    if (createDto.totalMarks != null) {
-      if (createDto.totalMarks !== expectedTotal) {
-        throw new BadRequestException('totalMarks must equal questions.length * marksPerQuestion');
-      }
+    if (createDto.totalMarks != null && createDto.totalMarks !== expectedTotal) {
+      throw new BadRequestException(
+        'totalMarks must equal questions.length * marksPerQuestion',
+      );
     }
 
     const payload: any = {
       ...createDto,
+      // normalize scheduling fields (especially for scheaduleNow=true)
+      questions: questionIds,
+      startDate,
+      startTime,
+      endDate,
+      endTime,
       durationInMinutes: durationInSeconds,
       totalQuestions,
       marksPerQuestion: marksPerQ,
-      totalMarks: createDto.totalMarks != null ? createDto.totalMarks : expectedTotal,
+      totalMarks:
+        createDto.totalMarks != null ? createDto.totalMarks : expectedTotal,
       negativeMarks: createDto.negativeMarks ?? 0,
       createdBy: userId,
+      status: scheduleNow ? 'active' : undefined,
     };
 
     const doc = await this.quizModel.create(payload);
-    // schedule start/end jobs for this quiz
+
+    // schedule start job for future quizzes
     try {
       this.quizScheduler.scheduleForQuiz(doc);
-    } catch (err) {
+    } catch {
       // ignore scheduling errors
     }
 
     // set deletionAt = createdAt + 6 months
     try {
-      const createdAt = (doc as any).createdAt ? new Date((doc as any).createdAt) : new Date();
+      const createdAt = (doc as any).createdAt
+        ? new Date((doc as any).createdAt)
+        : new Date();
       const deletionAt = new Date(createdAt);
       deletionAt.setMonth(deletionAt.getMonth() + 6);
       (doc as any).deletionAt = deletionAt;
       await doc.save();
-    } catch (err) {
+    } catch {
       // ignore
     }
 
@@ -69,40 +139,117 @@ export class QuizService {
     const group = await this.groupModel.findById(groupId).lean();
     if (!group) throw new NotFoundException('Group not found');
 
-    // reuse create logic but attach group
-    const totalQuestions = createDto.totalQuestions ?? (Array.isArray(createDto.questions) ? createDto.questions.length : 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatDate = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const formatTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    let scheduleNow = !!createDto.scheaduleNow;
+    const now = new Date();
+
+    const questions = Array.isArray(createDto.questions)
+      ? createDto.questions
+      : [];
+    if (questions.length === 0) {
+      throw new BadRequestException('questions are required');
+    }
+
+    const questionIds = questions.map((q) => q.questionId);
+    const questionTimesFromQuestions = questions.map((q) => q.timeInMinutes);
+
+    const questionsLen = questionIds.length;
+    const totalDurationMinutes = questionTimesFromQuestions.reduce(
+      (acc, v) => acc + v,
+      0,
+    );
+
+    if (!totalDurationMinutes || totalDurationMinutes <= 0) {
+      throw new BadRequestException(
+        'questions[].timeInMinutes must result in a positive total duration',
+      );
+    }
+
+    if (
+      createDto.durationInMinutes != null &&
+      createDto.durationInMinutes !== totalDurationMinutes
+    ) {
+      throw new BadRequestException(
+        'durationInMinutes must match sum of questions[].timeInMinutes',
+      );
+    }
+
+    let startDt: Date;
+    if (scheduleNow) {
+      startDt = now;
+    } else {
+      if (!createDto.startDate || !createDto.startTime) {
+        throw new BadRequestException(
+          'startDate and startTime are required when scheaduleNow is false',
+        );
+      }
+      const d = new Date(createDto.startDate);
+      const [sh, sm] = createDto.startTime.split(':').map(Number);
+      d.setHours(sh, sm, 0, 0);
+      startDt = d <= now ? now : d;
+      if (d <= now) scheduleNow = true;
+    }
+
+    const endDt = new Date(startDt.getTime() + totalDurationMinutes * 60 * 1000);
+
+    const startDate = scheduleNow ? formatDate(startDt) : createDto.startDate!;
+    const startTime = scheduleNow ? formatTime(startDt) : createDto.startTime!;
+    const endDate = formatDate(endDt);
+    const endTime = formatTime(endDt);
+
+    const durationInSeconds = totalDurationMinutes * 60;
+
+    const totalQuestions = createDto.totalQuestions ?? questionsLen;
+
     const marksPerQ = createDto.marksPerQuestion ?? 1;
     const expectedTotal = totalQuestions * marksPerQ;
-    if (createDto.totalMarks != null) {
-      if (createDto.totalMarks !== expectedTotal) {
-        throw new BadRequestException('totalMarks must equal questions.length * marksPerQuestion');
-      }
+    if (createDto.totalMarks != null && createDto.totalMarks !== expectedTotal) {
+      throw new BadRequestException(
+        'totalMarks must equal questions.length * marksPerQuestion',
+      );
     }
 
     const payload: any = {
       ...createDto,
-      durationInMinutes: (createDto.durationInMinutes || 0) * 60,
+      questions: questionIds,
+      startDate,
+      startTime,
+      endDate,
+      endTime,
+      durationInMinutes: durationInSeconds,
       totalQuestions,
       marksPerQuestion: marksPerQ,
-      totalMarks: createDto.totalMarks != null ? createDto.totalMarks : expectedTotal,
+      totalMarks:
+        createDto.totalMarks != null ? createDto.totalMarks : expectedTotal,
       negativeMarks: createDto.negativeMarks ?? 0,
       createdBy: userId,
       group: [groupId],
+      status: scheduleNow ? 'active' : undefined,
     };
 
     const doc = await this.quizModel.create(payload);
     try {
       this.quizScheduler.scheduleForQuiz(doc);
-    } catch {}
+    } catch {
+      // ignore
+    }
 
-    // set deletionAt
+    // set deletionAt = createdAt + 6 months
     try {
-      const createdAt = (doc as any).createdAt ? new Date((doc as any).createdAt) : new Date();
+      const createdAt = (doc as any).createdAt
+        ? new Date((doc as any).createdAt)
+        : new Date();
       const deletionAt = new Date(createdAt);
       deletionAt.setMonth(deletionAt.getMonth() + 6);
       (doc as any).deletionAt = deletionAt;
       await doc.save();
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     return { message: 'Quiz created in group', data: doc, success: true };
   }
@@ -115,7 +262,6 @@ export class QuizService {
     }).lean();
 
     const visible = docs.filter((doc: any) => {
-      if (doc.status === 'active') return true;
       if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime) return false;
       const start = new Date(doc.startDate);
       const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
@@ -193,9 +339,6 @@ export class QuizService {
     const docs = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
     const now = new Date();
     const visible = docs.filter((doc: any) => {
-      // If scheduler already marked it active, include it.
-      if (doc.status === 'active') return true;
-      // Otherwise include if current time lies within start and end window.
       if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime) return false;
       const start = new Date(doc.startDate);
       const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);

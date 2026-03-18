@@ -58,7 +58,10 @@ export class quizModule {
   @Prop()
   endTime?: string;
 
-  @Prop({ default: 'upcomming', enum: ['published', 'upcomming'] })
+  @Prop({
+    default: 'upcomming',
+    enum: ['published', 'upcomming', 'active', 'completed'],
+  })
   status?: string;
 
   @Prop({ enum: ['free', 'paid'], default: 'free' })
