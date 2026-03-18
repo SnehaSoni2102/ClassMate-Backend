@@ -129,6 +129,65 @@ export class QuizService {
     return { message: 'Active quizzes for group fetched', data: visible, success: true };
   }
 
+  async getUpcommingByGroup(groupId: string) {
+    const now = new Date();
+    const docs = await this.quizModel
+      .find({
+        group: groupId,
+        status: { $ne: 'completed' },
+      })
+      .lean();
+
+    const upcomming = docs.filter((doc: any) => {
+      if (
+        !doc.startDate ||
+        !doc.startTime ||
+        !doc.endDate ||
+        !doc.endTime
+      )
+        return false;
+
+      const start = new Date(doc.startDate);
+      const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
+      start.setHours(sh, sm, 0, 0);
+
+      // Upcomming = not started yet (start datetime is in the future).
+      return now < start;
+    });
+
+    return {
+      message: 'Upcomming quizzes for group fetched',
+      data: upcomming,
+      success: true,
+    };
+  }
+
+  async getCompletedByGroup(groupId: string) {
+    const now = new Date();
+    const docs = await this.quizModel
+      .find({
+        group: groupId,
+        $or: [{ status: 'completed' }, { endDate: { $exists: true } }],
+      })
+      .lean();
+
+    const completed = docs.filter((doc: any) => {
+      if (doc.status === 'completed') return true;
+      if (!doc.endDate || !doc.endTime) return false;
+
+      const end = new Date(doc.endDate);
+      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
+      end.setHours(eh, em, 0, 0);
+      return now > end;
+    });
+
+    return {
+      message: 'Completed quizzes for group fetched',
+      data: completed,
+      success: true,
+    };
+  }
+
   async findAll() {
     // Fetch quizzes that are not completed then filter to those currently active.
     const docs = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
@@ -232,23 +291,24 @@ export class QuizService {
     return { message: 'Completed quizzes fetched', data: completed, success: true };
   }
 
-  async getInProgressQuizzes() {
+  async getUpcommingQuizzes() {
     const now = new Date();
     const docs = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
-    const inProgress = docs.filter((doc: any) => {
-      if (doc.status === 'active') return true;
-      if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime) return false;
+    const upcomming = docs.filter((doc: any) => {
+      if (doc.status === 'completed') return false;
+      if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime)
+        return false;
+
+      // Upcomming = not started yet (start datetime is in the future).
       const start = new Date(doc.startDate);
       const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
       start.setHours(sh, sm, 0, 0);
-      const end = new Date(doc.endDate);
-      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
-      end.setHours(eh, em, 0, 0);
-      return now >= start && now <= end;
+
+      return now < start;
     });
     return {
       message: 'Upcomming quizzes fetched',
-      data: inProgress,
+      data: upcomming,
       success: true,
     };
   }

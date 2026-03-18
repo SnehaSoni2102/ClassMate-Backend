@@ -40,6 +40,18 @@ export class QuizController {
     return this.quizService.getActiveByGroup(groupId);
   }
 
+  @Get('group/:groupId/upcomming')
+  @ApiOperation({ summary: 'List upcomming quizzes for a group' })
+  async getUpcommingByGroup(@Param('groupId') groupId: string) {
+    return this.quizService.getUpcommingByGroup(groupId);
+  }
+
+  @Get('group/:groupId/completed')
+  @ApiOperation({ summary: 'List completed quizzes for a group' })
+  async getCompletedByGroup(@Param('groupId') groupId: string) {
+    return this.quizService.getCompletedByGroup(groupId);
+  }
+
   @Get('all')
   @ApiOperation({ summary: 'List quizzes' })
   async findAll() {
@@ -55,7 +67,7 @@ export class QuizController {
   @Get('upcomming')
   @ApiOperation({ summary: 'List upcomming quizzes' })
   async getUpcomming() {
-    return this.quizService.getInProgressQuizzes();
+    return this.quizService.getUpcommingQuizzes();
   }
 
   @Get(':id')
