@@ -11,6 +11,7 @@ import {
   ValidateIf,
   IsInt,
   Min,
+  ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -115,5 +116,28 @@ export class SubmitQuizDto {
     required: false,
   })
   groupId?: string;
+}
+
+export class SubmitQuizQuestionDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  @ApiProperty({
+    description: 'Selected option texts for this question',
+    example: ['Delhi'],
+    type: [String],
+    required: false,
+  })
+  selectedOption?: string[];
+
+  @IsNumber()
+  @Min(0)
+  @ApiProperty({
+    description: 'Time taken to answer this question (in seconds)',
+    example: 32,
+    required: true,
+  })
+  timeTaken: number;
 }
 

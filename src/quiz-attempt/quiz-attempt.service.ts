@@ -11,8 +11,8 @@ import { authModule } from 'src/users/users.schema';
 import { notificationModule } from 'src/notification/notification.schema';
 import { userSubscriptionModule } from 'src/user-subscription/user-subscription.schema';
 import { questionModule } from 'src/question/question.schema';
-import { Model } from 'mongoose';
-import { SubmitQuizDto } from './quiz-attempt.dto';
+import mongoose, { Model } from 'mongoose';
+import { SubmitQuizDto, SubmitQuizQuestionDto } from './quiz-attempt.dto';
 import {
   QuizAnalysisResponse,
   QuizQuestionStat,
@@ -197,6 +197,180 @@ export class QuizAttemptService {
     }
 
     return { message: 'Quiz submitted', data: attempt, success: true };
+  }
+
+  async submitQuestion(
+    userId: string,
+    quizId: string,
+    questionId: string,
+    dto: SubmitQuizQuestionDto,
+    language: 'en' | 'hi',
+    scope: 'global' | 'group',
+    groupId?: string,
+  ) {
+    const user = await this.authModel.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    if (scope === 'group' && !groupId) {
+      throw new BadRequestException('groupId is required for group attempts.');
+    }
+
+    if (!user.hasFreeTrial && scope === 'group') {
+      const subscription = await this.userSubscriptionModel
+        .findOne({
+          user: userId,
+          group: groupId,
+          status: 'active',
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() },
+        })
+        .lean();
+      if (!subscription) {
+        throw new BadRequestException(
+          'No active subscription found for this group. Please purchase one.',
+        );
+      }
+    }
+
+    const quiz = await this.quizModel.findById(quizId).lean();
+    if (!quiz) throw new NotFoundException('Quiz not found');
+
+    // ensure quiz active
+    const now = new Date();
+    if (quiz.startDate && quiz.startTime && quiz.endDate && quiz.endTime) {
+      const start = new Date(String(quiz.startDate));
+      const [sh, sm] = String(quiz.startTime || '00:00').split(':').map(Number);
+      start.setHours(sh, sm, 0, 0);
+      const end = new Date(String(quiz.endDate));
+      const [eh, em] = String(quiz.endTime || '00:00').split(':').map(Number);
+      end.setHours(eh, em, 0, 0);
+      if (now < start || now > end) {
+        throw new BadRequestException('Quiz is not active');
+      }
+    }
+
+    const questionEntries: any[] = (quiz as any).questions || [];
+    const qIndex = questionEntries.findIndex(
+      (e) => String(e?.questionId) === String(questionId),
+    );
+    if (qIndex === -1) throw new BadRequestException('Question not found in this quiz');
+
+    const question = await this.questionModel.findById(questionId).lean();
+    if (!question) throw new NotFoundException('Question not found');
+
+    const marksPerQ = (quiz as any).marksPerQuestion ?? 1;
+    const negative = (quiz as any).negativeMarks ?? 0;
+
+    const selectedAnswers = (dto.selectedOption || []).map((s) =>
+      String(s).trim().toLowerCase(),
+    );
+
+    const correctRaw =
+      language === 'hi' ? (question as any).correctAnswers_hi : (question as any).correctAnswers;
+    const correctAnswers = (correctRaw || []).map((a: any) =>
+      String(a).trim().toLowerCase(),
+    );
+
+    const isCorrect = arraysEqual(selectedAnswers, correctAnswers);
+    const marks = isCorrect ? marksPerQ : -negative;
+
+    const existingAttemptQuery: any = { user: userId, quizId };
+    if (scope === 'group') existingAttemptQuery.groupId = groupId;
+    const attempt = await this.quizAttemptModel.findOne(existingAttemptQuery);
+
+    const nowForAttempt = new Date();
+    if (!attempt) {
+      const created = await this.quizAttemptModel.create({
+        user: userId,
+        quizId,
+        answers: [],
+        score: 0,
+        attemptedQuestions: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+        startTime: nowForAttempt,
+        endTime: nowForAttempt,
+        totalTimeSpent: 0,
+        scope,
+        groupId: scope === 'group' ? groupId : null,
+        languageSelected: language,
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      (created.answers || []).push({
+        questionIndex: qIndex,
+        questionId: new mongoose.Types.ObjectId(questionId),
+        selectedOption: dto.selectedOption || [],
+        timeTaken: dto.timeTaken,
+        marks,
+        isCorrect,
+      });
+
+      // recompute totals
+      created.endTime = nowForAttempt;
+      const recomputedAttempted = (created.answers || []).filter(
+        (a: any) => Array.isArray(a?.selectedOption) && a.selectedOption.length > 0,
+      );
+      created.attemptedQuestions = recomputedAttempted.length;
+      created.correctAnswers = recomputedAttempted.filter((a: any) => a.isCorrect).length;
+      created.wrongAnswers =
+        created.attemptedQuestions - created.correctAnswers;
+      created.score = (created.answers || []).reduce(
+        (acc: number, a: any) => acc + (a?.marks || 0),
+        0,
+      );
+      created.totalTimeSpent = (created.answers || []).reduce(
+        (acc: number, a: any) => acc + (a?.timeTaken || 0),
+        0,
+      );
+
+      await created.save();
+      return { message: 'Question submitted', data: created, success: true };
+    }
+
+    const answers: any[] = attempt.answers || [];
+    const answerIdx = answers.findIndex(
+      (a) =>
+        (a?.questionId && String(a.questionId) === String(questionId)) ||
+        (a?.questionIndex === qIndex),
+    );
+
+    const payloadAnswer = {
+      questionIndex: qIndex,
+      questionId: new mongoose.Types.ObjectId(questionId),
+      selectedOption: dto.selectedOption || [],
+      timeTaken: dto.timeTaken,
+      marks,
+      isCorrect,
+    };
+
+    if (answerIdx >= 0) {
+      answers[answerIdx] = { ...answers[answerIdx], ...payloadAnswer };
+    } else {
+      answers.push(payloadAnswer);
+    }
+
+    attempt.answers = answers;
+    attempt.endTime = nowForAttempt;
+    // recompute totals
+    const recomputedAttempted = (attempt.answers || []).filter(
+      (a: any) => Array.isArray(a?.selectedOption) && a.selectedOption.length > 0,
+    );
+    attempt.attemptedQuestions = recomputedAttempted.length;
+    attempt.correctAnswers = recomputedAttempted.filter((a: any) => a.isCorrect).length;
+    attempt.wrongAnswers = attempt.attemptedQuestions - attempt.correctAnswers;
+    attempt.score = (attempt.answers || []).reduce(
+      (acc: number, a: any) => acc + (a?.marks || 0),
+      0,
+    );
+    attempt.totalTimeSpent = (attempt.answers || []).reduce(
+      (acc: number, a: any) => acc + (a?.timeTaken || 0),
+      0,
+    );
+
+    await attempt.save();
+
+    return { message: 'Question submitted', data: attempt, success: true };
   }
 
   async fetchAllQuizAttempts() {

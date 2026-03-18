@@ -5,8 +5,20 @@ class QuizAnswer {
   @Prop({ required: true })
   questionIndex: number;
 
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'questionModule', required: true })
+  questionId: mongoose.Types.ObjectId;
+
   @Prop({ type: [String], default: [] })
   selectedOption?: string[];
+
+  @Prop({ default: 0 })
+  timeTaken?: number; // seconds
+
+  @Prop({ default: 0 })
+  marks?: number;
+
+  @Prop({ default: false })
+  isCorrect?: boolean;
 }
 
 @Schema({ timestamps: true })

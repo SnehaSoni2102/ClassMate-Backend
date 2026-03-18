@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { QuizAttemptService } from './quiz-attempt.service';
-import { SubmitQuizDto } from './quiz-attempt.dto';
+import { SubmitQuizQuestionDto } from './quiz-attempt.dto';
 import { JwtAuthGuard } from 'guards/jwt.guards';
 import {
   ApiBearerAuth,
@@ -30,18 +30,51 @@ import { Roles, UserRole } from 'utils/helper';
 export class QuizAttemptController {
   constructor(private svc: QuizAttemptService) {}
 
-  @Post('submit')
-  @ApiOperation({ summary: 'Submit quiz answers' })
-  @ApiBody({ type: SubmitQuizDto })
-  @ApiResponse({ status: 201, description: 'Quiz submitted successfully' })
-  @ApiResponse({ status: 404, description: 'User not found | Quiz not found' })
+  @Post(':quizId/:questionId')
+  @ApiOperation({ summary: 'Submit quiz question attempt' })
+  @ApiBody({ type: SubmitQuizQuestionDto })
+  @ApiResponse({ status: 201, description: 'Question submitted successfully' })
+  @ApiResponse({ status: 404, description: 'User not found | Quiz not found | Question not found' })
+  @ApiQuery({
+    name: 'language',
+    required: false,
+    enum: ['en', 'hi'],
+    description: 'Language of the attempt (affects correctAnswers check)',
+  })
+  @ApiQuery({
+    name: 'scope',
+    required: false,
+    enum: ['global', 'group'],
+    description: 'Attempt scope',
+  })
+  @ApiQuery({
+    name: 'groupId',
+    required: false,
+    description: 'Group ID when scope is group',
+  })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Roles(UserRole.STUDENT, UserRole.ADMIN)
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async submit(@Body() dto: SubmitQuizDto, @Request() req) {
+  async submitQuestion(
+    @Param('quizId') quizId: string,
+    @Param('questionId') questionId: string,
+    @Body() dto: SubmitQuizQuestionDto,
+    @Request() req,
+    @Query('language') language: 'en' | 'hi' = 'en',
+    @Query('scope') scope: 'global' | 'group' = 'global',
+    @Query('groupId') groupId?: string,
+  ) {
     const userId = req.user._id;
-    return this.svc.submit(userId, dto);
+    return this.svc.submitQuestion(
+      userId,
+      quizId,
+      questionId,
+      dto,
+      language,
+      scope,
+      groupId,
+    );
   }
 
   @Get('fetchAll')
