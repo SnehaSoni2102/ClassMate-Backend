@@ -798,6 +798,79 @@ export class QuizAttemptService {
     };
   }
 
+  async getFinalResults(
+    quizId: string,
+    scope: 'global' | 'group',
+    groupId?: string,
+  ) {
+    if (scope === 'group' && !groupId) {
+      throw new BadRequestException('groupId is required when scope is group');
+    }
+
+    const filter: any = { quizId, scope };
+    if (scope === 'group') filter.groupId = groupId;
+
+    const attempts = await this.quizAttemptModel
+      .find(filter)
+      .populate('user')
+      .lean();
+
+    if (!attempts || attempts.length === 0) {
+      return {
+        message: 'No attempts found',
+        data: { podium: [] },
+        success: true,
+      };
+    }
+
+    const isBetterAttempt = (a: any, b: any) => {
+      const scoreA = a?.score ?? 0;
+      const scoreB = b?.score ?? 0;
+      if (scoreA !== scoreB) return scoreA > scoreB;
+      const tA = a?.totalTimeSpent ?? 0;
+      const tB = b?.totalTimeSpent ?? 0;
+      return tA < tB;
+    };
+
+    const bestByUser = new Map<string, any>();
+    for (const attempt of attempts) {
+      const uid =
+        (attempt.user as any)?._id?.toString?.() ?? attempt.user.toString();
+      if (!bestByUser.has(uid) || isBetterAttempt(attempt, bestByUser.get(uid))) {
+        bestByUser.set(uid, attempt);
+      }
+    }
+
+    const uniqueAttempts = Array.from(bestByUser.values());
+    uniqueAttempts.sort((a: any, b: any) => {
+      const scoreA = a?.score ?? 0;
+      const scoreB = b?.score ?? 0;
+      if (scoreA !== scoreB) return scoreB - scoreA; // higher score first
+      const tA = a?.totalTimeSpent ?? 0;
+      const tB = b?.totalTimeSpent ?? 0;
+      return tA - tB; // lower time first
+    });
+
+    const podium = uniqueAttempts.slice(0, 3).map((a: any, index: number) => {
+      const user = a?.user as any;
+      return {
+        rank: index + 1,
+        userId: user?._id?.toString?.() ?? user?._id ?? a.user,
+        name: user?.Name || 'User',
+        profilePicture: user?.profilePicture || '',
+        score: a?.score ?? 0,
+        totalTimeSpent: a?.totalTimeSpent ?? 0,
+        groupId: a?.groupId ?? null,
+      };
+    });
+
+    return {
+      message: 'Final results fetched successfully',
+      data: { podium },
+      success: true,
+    };
+  }
+
   async generateCertificatePdf(quizId: string, userId: string): Promise<Buffer> {
     const attempt = await this.quizAttemptModel
       .findOne({ quizId, user: userId })
