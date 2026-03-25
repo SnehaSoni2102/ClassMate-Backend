@@ -3,6 +3,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { quizModule } from './quiz.schema';
+import { getQuizStartEnd } from './quiz-window.util';
 
 @Injectable()
 export class QuizSchedulerService implements OnModuleInit {
@@ -25,14 +26,9 @@ export class QuizSchedulerService implements OnModuleInit {
     const quizzes = await this.quizModel.find({}).lean();
     for (const q of quizzes) {
       try {
-        // determine start and end datetimes
-        if (!q.startDate || !q.startTime || !q.endDate || !q.endTime) continue;
-        const start = new Date(q.startDate);
-        const [sh, sm] = (q.startTime || '00:00').split(':').map(Number);
-        start.setHours(sh, sm, 0, 0);
-        const end = new Date(q.endDate);
-        const [eh, em] = (q.endTime || '00:00').split(':').map(Number);
-        end.setHours(eh, em, 0, 0);
+        const window = getQuizStartEnd(q);
+        if (!window) continue;
+        const { start, end } = window;
 
         // set status immediately if within window
         if (now >= start && now <= end) {
@@ -98,10 +94,9 @@ export class QuizSchedulerService implements OnModuleInit {
     // cancel existing then schedule new
     this.cancelJobsForQuiz(q._id?.toString?.());
     const now = new Date();
-    if (!q.startDate || !q.startTime || !q.endDate || !q.endTime) return;
-    const start = new Date(q.startDate);
-    const [sh, sm] = (q.startTime || '00:00').split(':').map(Number);
-    start.setHours(sh, sm, 0, 0);
+    const window = getQuizStartEnd(q);
+    if (!window) return;
+    const { start } = window;
 
     if (start > now) {
       this.scheduleJob(`quiz-start-${q._id}`, start, async () => {

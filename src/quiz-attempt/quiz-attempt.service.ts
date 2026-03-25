@@ -23,6 +23,7 @@ import {
   CertificateData,
 } from 'utils/generateCertificate';
 import path from 'path';
+import { getQuizStartEnd } from 'src/quiz/quiz-window.util';
 
 @Injectable()
 export class QuizAttemptService {
@@ -50,13 +51,8 @@ export class QuizAttemptService {
 
     // ensure quiz active
     const now = new Date();
-    const start = new Date(String(quiz.startDate));
-    const [sh, sm] = (quiz.startTime || '00:00').split(':').map(Number);
-    start.setHours(sh, sm, 0, 0);
-    const end = new Date(String(quiz.endDate));
-    const [eh, em] = (quiz.endTime || '00:00').split(':').map(Number);
-    end.setHours(eh, em, 0, 0);
-    if (now < start || now > end) {
+    const window = getQuizStartEnd(quiz);
+    if (!window || now < window.start || now > window.end) {
       throw new BadRequestException('Quiz is not active');
     }
 
@@ -237,16 +233,9 @@ export class QuizAttemptService {
 
     // ensure quiz active
     const now = new Date();
-    if (quiz.startDate && quiz.startTime && quiz.endDate && quiz.endTime) {
-      const start = new Date(String(quiz.startDate));
-      const [sh, sm] = String(quiz.startTime || '00:00').split(':').map(Number);
-      start.setHours(sh, sm, 0, 0);
-      const end = new Date(String(quiz.endDate));
-      const [eh, em] = String(quiz.endTime || '00:00').split(':').map(Number);
-      end.setHours(eh, em, 0, 0);
-      if (now < start || now > end) {
-        throw new BadRequestException('Quiz is not active');
-      }
+    const activeWindow = getQuizStartEnd(quiz);
+    if (!activeWindow || now < activeWindow.start || now > activeWindow.end) {
+      throw new BadRequestException('Quiz is not active');
     }
 
     const questionEntries: any[] = (quiz as any).questions || [];

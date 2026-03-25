@@ -7,6 +7,7 @@ import { QuizSchedulerService } from './quiz-scheduler.service';
 import { groupModule } from 'src/group/group.schema';
 import { questionModule } from 'src/question/question.schema';
 import mongoose from 'mongoose';
+import { getQuizStartEnd, getQuizTimeStatus } from './quiz-window.util';
 
 @Injectable()
 export class QuizService {
@@ -74,12 +75,8 @@ export class QuizService {
       if (d <= now) scheduleNow = true;
     }
 
-    const endDt = new Date(startDt.getTime() + totalDurationMinutes * 60 * 1000);
-
     const startDate = scheduleNow ? formatDate(startDt) : createDto.startDate!;
     const startTime = scheduleNow ? formatTime(startDt) : createDto.startTime!;
-    const endDate = formatDate(endDt);
-    const endTime = formatTime(endDt);
 
     const durationInSeconds = totalDurationMinutes * 60;
 
@@ -94,14 +91,15 @@ export class QuizService {
       );
     }
 
+    const { endDate: _omitEndDate, endTime: _omitEndTime, ...createDtoRest } =
+      createDto;
+
     const payload: any = {
-      ...createDto,
+      ...createDtoRest,
       // normalize scheduling fields (especially for scheaduleNow=true)
       questions,
       startDate,
       startTime,
-      endDate,
-      endTime,
       durationInMinutes: durationInSeconds,
       totalQuestions,
       marksPerQuestion: marksPerQ,
@@ -197,12 +195,8 @@ export class QuizService {
       if (d <= now) scheduleNow = true;
     }
 
-    const endDt = new Date(startDt.getTime() + totalDurationMinutes * 60 * 1000);
-
     const startDate = scheduleNow ? formatDate(startDt) : createDto.startDate!;
     const startTime = scheduleNow ? formatTime(startDt) : createDto.startTime!;
-    const endDate = formatDate(endDt);
-    const endTime = formatTime(endDt);
 
     const durationInSeconds = totalDurationMinutes * 60;
 
@@ -216,13 +210,14 @@ export class QuizService {
       );
     }
 
+    const { endDate: _omitEndDate2, endTime: _omitEndTime2, ...createDtoRest2 } =
+      createDto;
+
     const payload: any = {
-      ...createDto,
+      ...createDtoRest2,
       questions,
       startDate,
       startTime,
-      endDate,
-      endTime,
       durationInMinutes: durationInSeconds,
       totalQuestions,
       marksPerQuestion: marksPerQ,
@@ -264,16 +259,9 @@ export class QuizService {
       status: { $ne: 'completed' },
     }).lean();
 
-    const visible = docs.filter((doc: any) => {
-      if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime) return false;
-      const start = new Date(doc.startDate);
-      const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
-      start.setHours(sh, sm, 0, 0);
-      const end = new Date(doc.endDate);
-      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
-      end.setHours(eh, em, 0, 0);
-      return now >= start && now <= end;
-    });
+    const visible = docs
+      .filter((doc: any) => getQuizTimeStatus(doc, now) === 'active')
+      .map((doc: any) => ({ ...doc, status: 'active' }));
 
     return { message: 'Active quizzes for group fetched', data: visible, success: true };
   }
@@ -287,22 +275,9 @@ export class QuizService {
       })
       .lean();
 
-    const upcomming = docs.filter((doc: any) => {
-      if (
-        !doc.startDate ||
-        !doc.startTime ||
-        !doc.endDate ||
-        !doc.endTime
-      )
-        return false;
-
-      const start = new Date(doc.startDate);
-      const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
-      start.setHours(sh, sm, 0, 0);
-
-      // Upcomming = not started yet (start datetime is in the future).
-      return now < start;
-    });
+    const upcomming = docs.filter(
+      (doc: any) => getQuizTimeStatus(doc, now) === 'upcomming',
+    );
 
     return {
       message: 'Upcomming quizzes for group fetched',
@@ -313,21 +288,13 @@ export class QuizService {
 
   async getCompletedByGroup(groupId: string) {
     const now = new Date();
-    const docs = await this.quizModel
-      .find({
-        group: groupId,
-        $or: [{ status: 'completed' }, { endDate: { $exists: true } }],
-      })
-      .lean();
+    const docs = await this.quizModel.find({ group: groupId }).lean();
 
     const completed = docs.filter((doc: any) => {
       if (doc.status === 'completed') return true;
-      if (!doc.endDate || !doc.endTime) return false;
-
-      const end = new Date(doc.endDate);
-      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
-      end.setHours(eh, em, 0, 0);
-      return now > end;
+      const window = getQuizStartEnd(doc);
+      if (!window) return false;
+      return now > window.end;
     });
 
     return {
@@ -341,16 +308,9 @@ export class QuizService {
     // Fetch quizzes that are not completed then filter to those currently active.
     const docs = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
     const now = new Date();
-    const visible = docs.filter((doc: any) => {
-      if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime) return false;
-      const start = new Date(doc.startDate);
-      const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
-      start.setHours(sh, sm, 0, 0);
-      const end = new Date(doc.endDate);
-      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
-      end.setHours(eh, em, 0, 0);
-      return now >= start && now <= end;
-    });
+    const visible = docs
+      .filter((doc: any) => getQuizTimeStatus(doc, now) === 'active')
+      .map((doc: any) => ({ ...doc, status: 'active' }));
     return { message: 'Quizzes fetched', data: visible, success: true };
   }
 
@@ -362,19 +322,13 @@ export class QuizService {
     let isAvailableNow = false;
     let availability: 'upcomming' | 'active' | 'completed' | 'unknown' = 'unknown';
 
-    if (doc.startDate && doc.startTime && doc.endDate && doc.endTime) {
-      const start = new Date(doc.startDate);
-      const [sh, sm] = String(doc.startTime || '00:00').split(':').map(Number);
-      start.setHours(sh, sm, 0, 0);
-
-      const end = new Date(doc.endDate);
-      const [eh, em] = String(doc.endTime || '00:00').split(':').map(Number);
-      end.setHours(eh, em, 0, 0);
-
-      if (now < start) {
+    const window = getQuizStartEnd(doc);
+    const timeStatus = getQuizTimeStatus(doc, now);
+    if (window) {
+      if (now < window.start) {
         availability = 'upcomming';
         isAvailableNow = false;
-      } else if (now > end) {
+      } else if (now > window.end) {
         availability = 'completed';
         isAvailableNow = false;
       } else {
@@ -413,10 +367,14 @@ export class QuizService {
       return q ? { ...q, timeInMinutes: entry?.timeInMinutes } : entry;
     });
 
+    const resolvedStatus =
+      timeStatus !== 'unknown' ? timeStatus : (doc as any).status;
+
     return {
       message: 'Quiz fetched',
       data: {
         ...doc,
+        status: resolvedStatus,
         questions: populatedQuestions,
         isAvailableNow,
         availability,
@@ -475,17 +433,13 @@ export class QuizService {
   async getCompletedQuizzes() {
     const now = new Date();
     // quizzes explicitly marked completed or whose end datetime is past
-    const docs = await this.quizModel.find({
-      $or: [{ status: 'completed' }, { endDate: { $exists: true } }],
-    }).lean();
+    const docs = await this.quizModel.find({}).lean();
 
     const completed = docs.filter((doc: any) => {
       if (doc.status === 'completed') return true;
-      if (!doc.endDate || !doc.endTime) return false;
-      const end = new Date(doc.endDate);
-      const [eh, em] = (doc.endTime || '00:00').split(':').map(Number);
-      end.setHours(eh, em, 0, 0);
-      return now > end;
+      const window = getQuizStartEnd(doc);
+      if (!window) return false;
+      return now > window.end;
     });
 
     return { message: 'Completed quizzes fetched', data: completed, success: true };
@@ -494,18 +448,11 @@ export class QuizService {
   async getUpcommingQuizzes() {
     const now = new Date();
     const docs = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
-    const upcomming = docs.filter((doc: any) => {
-      if (doc.status === 'completed') return false;
-      if (!doc.startDate || !doc.startTime || !doc.endDate || !doc.endTime)
-        return false;
-
-      // Upcomming = not started yet (start datetime is in the future).
-      const start = new Date(doc.startDate);
-      const [sh, sm] = (doc.startTime || '00:00').split(':').map(Number);
-      start.setHours(sh, sm, 0, 0);
-
-      return now < start;
-    });
+    const upcomming = docs.filter(
+      (doc: any) =>
+        doc.status !== 'completed' &&
+        getQuizTimeStatus(doc, now) === 'upcomming',
+    );
     return {
       message: 'Upcomming quizzes fetched',
       data: upcomming,

@@ -8,6 +8,7 @@ import { userTestAttemptModule } from 'src/user-test-attempt/user-test-attempt.s
 import { authModule } from 'src/users/users.schema';
 import { bannerModule } from 'src/banner/banner.schema';
 import { quizModule } from 'src/quiz/quiz.schema';
+import { getQuizStartEnd } from 'src/quiz/quiz-window.util';
 
 @Injectable()
 export class SchedulerService {
@@ -33,13 +34,9 @@ export class SchedulerService {
         const quizzes = await this.quizModel.find({ status: { $ne: 'completed' } }).lean();
         for (const q of quizzes) {
           try {
-            if (!q.startDate || !q.startTime || !q.endDate || !q.endTime) continue;
-            const start = new Date(q.startDate);
-            const [sh, sm] = (q.startTime || '00:00').split(':').map(Number);
-            start.setHours(sh, sm, 0, 0);
-            const end = new Date(q.endDate);
-            const [eh, em] = (q.endTime || '00:00').split(':').map(Number);
-            end.setHours(eh, em, 0, 0);
+            const window = getQuizStartEnd(q);
+            if (!window) continue;
+            const { start, end } = window;
 
             if (now > end && q.status !== 'completed') {
               await this.quizModel.updateOne({ _id: q._id }, { status: 'completed' });
