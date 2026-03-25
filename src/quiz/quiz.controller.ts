@@ -100,6 +100,14 @@ export class QuizController {
     return this.quizService.update(id, dto);
   }
 
+  @Post('end/:quizId')
+  @ApiOperation({ summary: 'End quiz early' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async endQuiz(@Param('quizId') quizId: string) {
+    return this.quizService.endQuiz(quizId);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete quiz' })
   @ApiBearerAuth()

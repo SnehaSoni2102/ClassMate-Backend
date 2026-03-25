@@ -11,8 +11,13 @@ import { authModule } from 'src/users/users.schema';
 import { notificationModule } from 'src/notification/notification.schema';
 import { userSubscriptionModule } from 'src/user-subscription/user-subscription.schema';
 import { questionModule } from 'src/question/question.schema';
+import { groupModule } from 'src/group/group.schema';
 import mongoose, { Model } from 'mongoose';
-import { SubmitQuizDto, SubmitQuizQuestionDto } from './quiz-attempt.dto';
+import {
+  ManualNextQuestionDto,
+  SubmitQuizDto,
+  SubmitQuizQuestionDto,
+} from './quiz-attempt.dto';
 import {
   QuizAnalysisResponse,
   QuizQuestionStat,
@@ -24,6 +29,8 @@ import {
 } from 'utils/generateCertificate';
 import path from 'path';
 import { getQuizStartEnd } from 'src/quiz/quiz-window.util';
+import { QuizAttemptEventsService, QuestionRanker } from './quiz-attempt-events.service';
+import { QuestionRankRedisService } from './question-rank.redis.service';
 
 @Injectable()
 export class QuizAttemptService {
@@ -40,6 +47,10 @@ export class QuizAttemptService {
     private userSubscriptionModel: Model<any>,
     @InjectModel(questionModule.name)
     private questionModel: Model<questionModule>,
+    @InjectModel(groupModule.name)
+    private groupModel: Model<any>,
+    private readonly events: QuizAttemptEventsService,
+    private readonly questionRankRedisService: QuestionRankRedisService,
   ) {}
 
   async submit(userId: string, dto: SubmitQuizDto) {
@@ -314,6 +325,38 @@ export class QuizAttemptService {
       );
 
       await created.save();
+      try {
+        const top5 = await this.questionRankRedisService.updateAndGetTop5(
+          questionId,
+          String(userId),
+          marks,
+          dto.timeTaken,
+        );
+        this.events.emitAnswerSaved({
+          eventType: 'quiz-answer-saved',
+          quizId: String(quizId),
+          questionId: String(questionId),
+          userId: String(userId),
+          score: created.score || 0,
+          totalTimeSpent: created.totalTimeSpent || 0,
+          top5,
+          timestamp: new Date().toISOString(),
+        });
+
+        await this.maybeEmitAllResponded({
+          quiz,
+          quizId: String(quizId),
+          questionId: String(questionId),
+          questionIndex: qIndex,
+          questionEntries,
+          userId: String(userId),
+          scope,
+          groupId,
+          top5,
+        });
+      } catch {
+        // do not block answer save if realtime stack fails
+      }
       return { message: 'Question submitted', data: created, success: true };
     }
 
@@ -358,8 +401,183 @@ export class QuizAttemptService {
     );
 
     await attempt.save();
+    try {
+      const top5 = await this.questionRankRedisService.updateAndGetTop5(
+        questionId,
+        String(userId),
+        marks,
+        dto.timeTaken,
+      );
+      this.events.emitAnswerSaved({
+        eventType: 'quiz-answer-saved',
+        quizId: String(quizId),
+        questionId: String(questionId),
+        userId: String(userId),
+        score: attempt.score || 0,
+        totalTimeSpent: attempt.totalTimeSpent || 0,
+        top5,
+        timestamp: new Date().toISOString(),
+      });
+
+      await this.maybeEmitAllResponded({
+        quiz,
+        quizId: String(quizId),
+        questionId: String(questionId),
+        questionIndex: qIndex,
+        questionEntries,
+        userId: String(userId),
+        scope,
+        groupId,
+        top5,
+      });
+    } catch {
+      // do not block answer save if realtime stack fails
+    }
 
     return { message: 'Question submitted', data: attempt, success: true };
+  }
+
+  private async maybeEmitAllResponded(params: {
+    quiz: any;
+    quizId: string;
+    questionId: string;
+    questionIndex: number;
+    questionEntries: any[];
+    userId: string;
+    scope: 'global' | 'group';
+    groupId?: string;
+    top5: QuestionRanker[];
+  }): Promise<void> {
+    const {
+      quiz,
+      quizId,
+      questionId,
+      questionIndex,
+      questionEntries,
+      userId,
+      scope,
+      groupId,
+      top5,
+    } = params;
+
+    try {
+      // Requirement focuses on group participants.
+      if (scope !== 'group' || !groupId) return;
+
+      const quizWindow = getQuizStartEnd(quiz);
+      if (!quizWindow) return;
+
+      const currentMinutes = Number(
+        questionEntries?.[questionIndex]?.timeInMinutes ?? 0,
+      );
+      if (!currentMinutes || currentMinutes <= 0) return;
+
+      const minutesBefore = (questionEntries || [])
+        .slice(0, questionIndex)
+        .reduce((acc: number, e: any) => {
+          return acc + Number(e?.timeInMinutes ?? 0);
+        }, 0);
+
+      const questionEnd = new Date(
+        quizWindow.start.getTime() +
+          (minutesBefore + currentMinutes) * 60 * 1000,
+      );
+
+      const group = await this.groupModel.findById(groupId).lean();
+      if (!group) return;
+
+      const members = Array.isArray((group as any).members)
+        ? (group as any).members
+        : [];
+
+      // Count only `member` role; if none exist, fallback to all members.
+      let participants = members.filter((m: any) => m?.role === 'member');
+      if (participants.length === 0) participants = members;
+
+      const expectedCount = participants.length;
+      if (!expectedCount || expectedCount <= 0) return;
+
+      const isParticipant = participants.some(
+        (m: any) => String(m?.user) === String(userId),
+      );
+      if (!isParticipant) return;
+
+      const { triggered, respondedCount, expectedCount: resolvedExpected } =
+        await this.questionRankRedisService.addResponderAndCheckAllResponded({
+          questionId,
+          quizId,
+          scope,
+          groupId,
+          userId,
+          expectedCount,
+          questionEnd,
+        });
+
+      if (!triggered) return;
+
+      this.events.emitQuestionAllResponded({
+        eventType: 'quiz-question-all-responded',
+        quizId,
+        questionId,
+        userId, // last responder
+        scope,
+        groupId,
+        expectedCount: resolvedExpected,
+        respondedCount,
+        top5,
+        timestamp: new Date().toISOString(),
+      });
+    } catch {
+      // never block answer submission
+    }
+  }
+
+  async manualNextQuestion(quizId: string, dto: ManualNextQuestionDto) {
+    const quiz = await this.quizModel.findById(quizId).lean();
+    if (!quiz) throw new NotFoundException('Quiz not found');
+
+    const questionEntries: any[] = Array.isArray((quiz as any).questions)
+      ? (quiz as any).questions
+      : [];
+    if (!questionEntries.length) {
+      throw new BadRequestException('Quiz has no questions');
+    }
+
+    const resolvedNextIndex =
+      dto.nextQuestionIndex ??
+      (dto.currentQuestionIndex != null
+        ? dto.currentQuestionIndex + 1
+        : null);
+
+    if (resolvedNextIndex == null) {
+      throw new BadRequestException(
+        'Provide either nextQuestionIndex or currentQuestionIndex',
+      );
+    }
+
+    if (
+      resolvedNextIndex < 0 ||
+      resolvedNextIndex >= questionEntries.length
+    ) {
+      throw new BadRequestException('nextQuestionIndex out of bounds');
+    }
+
+    const nextEntry = questionEntries[resolvedNextIndex];
+
+    this.events.emitNextQuestion({
+      eventType: 'quiz-next-question',
+      quizId: String(quizId),
+      nextQuestionIndex: resolvedNextIndex,
+      nextQuestionId: nextEntry?.questionId
+        ? String(nextEntry.questionId)
+        : undefined,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      message: 'Next question event emitted',
+      success: true,
+    };
   }
 
   async fetchAllQuizAttempts() {
@@ -367,6 +585,15 @@ export class QuizAttemptService {
     return {
       message: 'All submitted quizzes fetched',
       data: attempts,
+    };
+  }
+
+  async getTopQuestionRankers(questionId: string) {
+    const top5 = await this.questionRankRedisService.getTop5(questionId);
+    return {
+      message: 'Question top 5 rankers fetched',
+      data: top5,
+      success: true,
     };
   }
 

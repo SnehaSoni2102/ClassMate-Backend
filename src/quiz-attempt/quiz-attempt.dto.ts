@@ -141,3 +141,25 @@ export class SubmitQuizQuestionDto {
   timeTaken: number;
 }
 
+export class ManualNextQuestionDto {
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @ApiProperty({
+    description: 'Current question index (zero-based). Server will take next = current + 1',
+    example: 0,
+    required: false,
+  })
+  currentQuestionIndex?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @ApiProperty({
+    description: 'Explicit next question index (zero-based). If provided, it will be used as-is',
+    example: 1,
+    required: false,
+  })
+  nextQuestionIndex?: number;
+}
+

@@ -2,18 +2,24 @@ import {
   Body,
   Controller,
   Get,
+  MessageEvent,
   Param,
   Post,
   Query,
   Request,
   Res,
+  Sse,
   UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { Response } from 'express';
 import { QuizAttemptService } from './quiz-attempt.service';
-import { SubmitQuizQuestionDto } from './quiz-attempt.dto';
+import {
+  ManualNextQuestionDto,
+  SubmitQuizQuestionDto,
+} from './quiz-attempt.dto';
 import { JwtAuthGuard } from 'guards/jwt.guards';
 import {
   ApiBearerAuth,
@@ -24,11 +30,15 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { Roles, UserRole } from 'utils/helper';
+import { QuizAttemptEventsService } from './quiz-attempt-events.service';
 
 @ApiTags('QUIZ-ATTEMPT')
 @Controller('quiz-attempt')
 export class QuizAttemptController {
-  constructor(private svc: QuizAttemptService) {}
+  constructor(
+    private svc: QuizAttemptService,
+    private readonly events: QuizAttemptEventsService,
+  ) {}
 
   @Post(':quizId/:questionId')
   @ApiOperation({ summary: 'Submit quiz question attempt' })
@@ -77,6 +87,32 @@ export class QuizAttemptController {
     );
   }
 
+  @Post('manual-next/:quizId')
+  @ApiOperation({ summary: 'Manually move to next quiz question (sends SSE to mobile)' })
+  @ApiBody({ type: ManualNextQuestionDto })
+  @ApiResponse({ status: 200, description: 'Next question event emitted' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  manualNextQuestion(
+    @Param('quizId') quizId: string,
+    @Body() dto: ManualNextQuestionDto,
+  ) {
+    return this.svc.manualNextQuestion(quizId, dto);
+  }
+
+  @Sse('events/:quizId')
+  @ApiOperation({
+    summary: 'SSE stream for quiz answer saved events',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPERADMIN)
+  streamQuizEvents(@Param('quizId') quizId: string): Observable<MessageEvent> {
+    return this.events.streamForQuiz(quizId);
+  }
+
   @Get('fetchAll')
   @ApiBearerAuth()
   @ApiOperation({
@@ -87,6 +123,15 @@ export class QuizAttemptController {
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   fetchAll() {
     return this.svc.fetchAllQuizAttempts();
+  }
+
+  @Get('question-rankers/:questionId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get top 5 rankers for a question' })
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.STUDENT)
+  getTopQuestionRankers(@Param('questionId') questionId: string) {
+    return this.svc.getTopQuestionRankers(questionId);
   }
 
   @Get('related_quizzes/:id')

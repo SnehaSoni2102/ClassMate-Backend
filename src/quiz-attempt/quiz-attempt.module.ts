@@ -6,8 +6,11 @@ import { authModule, authSchema } from 'src/users/users.schema';
 import { notificationModule, notificationSchema } from 'src/notification/notification.schema';
 import { userSubscriptionModule, userSubscriptionSchema } from 'src/user-subscription/user-subscription.schema';
 import { questionModule, questionSchema } from 'src/question/question.schema';
+import { groupModule, groupSchema } from 'src/group/group.schema';
 import { QuizAttemptService } from './quiz-attempt.service';
 import { QuizAttemptController } from './quiz-attempt.controller';
+import { QuizAttemptEventsService } from './quiz-attempt-events.service';
+import { QuestionRankRedisService } from './question-rank.redis.service';
 
 @Module({
   imports: [
@@ -18,9 +21,14 @@ import { QuizAttemptController } from './quiz-attempt.controller';
       { name: notificationModule.name, schema: notificationSchema },
       { name: userSubscriptionModule.name, schema: userSubscriptionSchema },
       { name: questionModule.name, schema: questionSchema },
+      { name: groupModule.name, schema: groupSchema },
     ]),
   ],
-  providers: [QuizAttemptService],
+  providers: [
+    QuizAttemptService,
+    QuizAttemptEventsService,
+    QuestionRankRedisService,
+  ],
   controllers: [QuizAttemptController],
   exports: [QuizAttemptService],
 })

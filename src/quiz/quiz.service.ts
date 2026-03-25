@@ -424,6 +424,34 @@ export class QuizService {
     return { message: 'Quiz updated', data: doc, success: true };
   }
 
+  async endQuiz(quizId: string) {
+    const doc = await this.quizModel.findById(quizId);
+    if (!doc) throw new NotFoundException('Quiz not found');
+
+    // cancel any future start job (if quiz hasn't started yet)
+    try {
+      this.quizScheduler.cancelJobsForQuiz(quizId);
+    } catch {
+      // ignore
+    }
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const now = new Date();
+
+    // Store local calendar date/time (HH:mm) so comparisons work as expected.
+    const endDate = new Date(now);
+    endDate.setHours(0, 0, 0, 0);
+    const endTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    (doc as any).endDate = endDate;
+    (doc as any).endTime = endTime;
+    (doc as any).status = 'completed';
+
+    await doc.save();
+
+    return { message: 'Quiz ended', data: doc, success: true };
+  }
+
   async remove(id: string) {
     const doc = await this.quizModel.findByIdAndDelete(id);
     if (!doc) throw new NotFoundException('Quiz not found');
